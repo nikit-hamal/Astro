@@ -113,7 +113,7 @@ class SwissEphemerisEngine(context: Context) {
 
         // Calculate planetary positions
         val planetPositions = Planet.MAIN_PLANETS.map { planet ->
-            calculatePlanetPosition(planet, julianDay, houseCusps, ascendant)
+            calculatePlanetPosition(planet, julianDay, houseCusps)
         }
 
         return VedicChart(
@@ -135,8 +135,7 @@ class SwissEphemerisEngine(context: Context) {
     private fun calculatePlanetPosition(
         planet: Planet,
         julianDay: Double,
-        houseCusps: DoubleArray,
-        ascendant: Double
+        houseCusps: DoubleArray
     ): PlanetPosition {
         val xx = DoubleArray(6)
         val serr = StringBuffer()

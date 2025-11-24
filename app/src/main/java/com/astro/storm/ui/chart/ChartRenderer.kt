@@ -59,7 +59,7 @@ class ChartRenderer {
             drawPlanets(center, diamondSize, chart)
 
             // Draw ascendant marker
-            drawAscendantMarker(center, diamondSize, chart.ascendant)
+            drawAscendantMarker(center, diamondSize)
         }
     }
 
@@ -218,7 +218,7 @@ class ChartRenderer {
         }
     }
 
-    private fun DrawScope.drawAscendantMarker(center: Offset, size: Float, ascendant: Double) {
+    private fun DrawScope.drawAscendantMarker(center: Offset, size: Float) {
         val halfSize = size / 2f
         val markerPosition = Offset(center.x - halfSize * 0.1f, center.y - halfSize * 0.6f)
 
