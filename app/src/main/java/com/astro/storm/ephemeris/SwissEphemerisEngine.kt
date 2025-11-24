@@ -100,8 +100,9 @@ class SwissEphemerisEngine(context: Context) {
         val ascmc = DoubleArray(10)
         swissEph.swe_houses(
             julianDay,
-            birthData.latitude,
-            birthData.longitude,
+            0,
+            birthData.latitude.toDouble(),
+            birthData.longitude.toDouble(),
             houseSystem.code.code,
             houseCusps,
             ascmc
