@@ -143,17 +143,14 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         ephemerisEngine.close()
     }
-}
 
-/**
- * UI states for chart operations
- */
-private fun calculateDivisionalCharts(chart: VedicChart): List<DivisionalChart> {
-    return listOf(
-        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D9),
-        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D10),
-        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D60)
-    )
+    private fun calculateDivisionalCharts(chart: VedicChart): List<DivisionalChart> {
+        return listOf(
+            ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D9),
+            ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D10),
+            ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D60)
+        )
+    }
 }
 
 sealed class ChartUiState {

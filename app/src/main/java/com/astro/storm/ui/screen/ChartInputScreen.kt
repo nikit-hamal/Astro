@@ -11,11 +11,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.astro.storm.data.model.BirthData
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.LocalDateTime
@@ -31,6 +33,7 @@ fun ChartInputScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
@@ -52,7 +55,9 @@ fun ChartInputScreen(
                 onChartCalculated()
             }
             is ChartUiState.Error -> {
-                snackbarHostState.showSnackbar(state.message)
+                scope.launch {
+                    snackbarHostState.showSnackbar(state.message)
+                }
                 viewModel.resetState()
             }
             else -> {}
@@ -160,19 +165,21 @@ fun ChartInputScreen(
 
             Button(
                 onClick = {
-                    try {
-                        val dateTime = LocalDateTime.of(date, time)
-                        val birthData = BirthData(
-                            name = name.ifBlank { "Unknown" },
-                            dateTime = dateTime,
-                            latitude = latitude.toDouble(),
-                            longitude = longitude.toDouble(),
-                            timezone = timezone,
-                            location = location.ifBlank { "Unknown" }
-                        )
-                        viewModel.calculateChart(birthData)
-                    } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("Invalid input: ${e.message}")
+                    scope.launch {
+                        try {
+                            val dateTime = LocalDateTime.of(date, time)
+                            val birthData = BirthData(
+                                name = name.ifBlank { "Unknown" },
+                                dateTime = dateTime,
+                                latitude = latitude.toDouble(),
+                                longitude = longitude.toDouble(),
+                                timezone = timezone,
+                                location = location.ifBlank { "Unknown" }
+                            )
+                            viewModel.calculateChart(birthData)
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar("Invalid input: ${e.message}")
+                        }
                     }
                 },
                 modifier = Modifier

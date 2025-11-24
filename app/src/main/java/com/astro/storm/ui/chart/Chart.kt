@@ -25,6 +25,7 @@ fun SouthIndianChart(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val colors = MaterialTheme.colorScheme
 
     Canvas(
         modifier = modifier
@@ -35,7 +36,8 @@ fun SouthIndianChart(
             drawScope = this,
             planetPositions = planetPositions,
             size = size.minDimension,
-            textMeasurer = textMeasurer
+            textMeasurer = textMeasurer,
+            colors = colors
         )
     }
 }
@@ -44,7 +46,8 @@ private fun drawSouthIndianChart(
     drawScope: DrawScope,
     planetPositions: List<PlanetPosition>,
     size: Float,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    colors: androidx.compose.material3.ColorScheme
 ) {
     with(drawScope) {
         val center = Offset(size / 2f, size / 2f)
@@ -52,24 +55,24 @@ private fun drawSouthIndianChart(
 
         // Draw background
         drawRect(
-            color = MaterialTheme.colorScheme.background,
+            color = colors.background,
             size = Size(size, size)
         )
 
         // Draw diamond outline
-        drawDiamond(center, diamondSize, MaterialTheme.colorScheme.primary, strokeWidth = 3f)
+        drawDiamond(center, diamondSize, colors.primary, strokeWidth = 3f)
 
         // Draw house divisions
-        drawHouseDivisions(center, diamondSize, MaterialTheme.colorScheme.secondary)
+        drawHouseDivisions(center, diamondSize, colors.secondary)
 
         // Draw house numbers
-        drawHouseNumbers(center, diamondSize, textMeasurer)
+        drawHouseNumbers(center, diamondSize, textMeasurer, colors.onBackground)
 
         // Draw planets in houses
-        drawPlanets(center, diamondSize, planetPositions, textMeasurer)
+        drawPlanets(center, diamondSize, planetPositions, textMeasurer, colors.tertiary)
 
         // Draw ascendant marker
-        drawAscendantMarker(center, diamondSize, textMeasurer)
+        drawAscendantMarker(center, diamondSize, textMeasurer, colors.secondary)
     }
 }
 
@@ -150,7 +153,8 @@ private fun DrawScope.drawHouseDivisions(center: Offset, size: Float, color: Col
 private fun DrawScope.drawHouseNumbers(
     center: Offset,
     size: Float,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    color: Color
 ) {
     val halfSize = size / 2f
 
@@ -175,7 +179,7 @@ private fun DrawScope.drawHouseNumbers(
         val textLayoutResult = textMeasurer.measure(
             text = houseNumber,
             style = TextStyle(
-                color = MaterialTheme.colorScheme.onBackground,
+                color = color,
                 fontSize = (size * 0.04f).sp
             )
         )
@@ -193,7 +197,8 @@ private fun DrawScope.drawPlanets(
     center: Offset,
     size: Float,
     planetPositions: List<PlanetPosition>,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    color: Color
 ) {
     val halfSize = size / 2f
 
@@ -225,7 +230,7 @@ private fun DrawScope.drawPlanets(
             val textLayoutResult = textMeasurer.measure(
                 text = planetText,
                 style = TextStyle(
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = color,
                     fontSize = (size * 0.035f).sp
                 )
             )
@@ -244,14 +249,15 @@ private fun DrawScope.drawPlanets(
 private fun DrawScope.drawAscendantMarker(
     center: Offset,
     size: Float,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    color: Color
 ) {
     val halfSize = size / 2f
     val markerPosition = Offset(center.x - halfSize * 0.1f, center.y - halfSize * 0.6f)
     val textLayoutResult = textMeasurer.measure(
         text = "As",
         style = TextStyle(
-            color = MaterialTheme.colorScheme.secondary,
+            color = color,
             fontSize = (size * 0.045f).sp
         )
     )
