@@ -46,6 +46,14 @@ fun ChartInputScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    )
+    val timePickerState = rememberTimePickerState(
+        initialHour = time.hour,
+        initialMinute = time.minute
+    )
+
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is ChartUiState.Success -> {
@@ -204,7 +212,13 @@ fun ChartInputScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(
-                    onClick = { showDatePicker = false }
+                    onClick = {
+                        showDatePicker = false
+                        date =
+                            datePickerState.selectedDateMillis?.let {
+                                LocalDate.ofEpochDay(it / (1000 * 60 * 60 * 24))
+                            } ?: date
+                    }
                 ) {
                     Text("OK")
                 }
@@ -217,7 +231,7 @@ fun ChartInputScreen(
                 }
             }
         ) {
-            DatePicker(state = rememberDatePickerState())
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -226,7 +240,10 @@ fun ChartInputScreen(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
                 TextButton(
-                    onClick = { showTimePicker = false }
+                    onClick = {
+                        showTimePicker = false
+                        time = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    }
                 ) {
                     Text("OK")
                 }
@@ -239,7 +256,7 @@ fun ChartInputScreen(
                 }
             }
         ) {
-            TimePicker(state = rememberTimePickerState())
+            TimePicker(state = timePickerState)
         }
     }
 }
@@ -269,6 +286,7 @@ fun InputCard(
         }
     }
 }
+
 @Composable
 fun TimePickerDialog(
     onDismissRequest: () -> Unit,
