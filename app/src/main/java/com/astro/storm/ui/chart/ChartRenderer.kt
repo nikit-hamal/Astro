@@ -104,8 +104,6 @@ class ChartRenderer {
         )
 
         // Diagonal lines for inner divisions
-        val quarterSize = size / 4f
-
         // Top-left to center divisions
         drawLine(
             color = HOUSE_LINE_COLOR,
@@ -139,10 +137,8 @@ class ChartRenderer {
         )
     }
 
-    private fun DrawScope.drawHouseNumbers(center: Offset, size: Float, ascendant: Double) {
+    private fun DrawScope.drawHouseNumbers(center: Offset, size: Float) {
         val halfSize = size / 2f
-        val sign = ZodiacSign.fromLongitude(ascendant)
-        val startingHouseNumber = sign.number
 
         // South Indian chart house positions (fixed layout)
         val housePositions = listOf(

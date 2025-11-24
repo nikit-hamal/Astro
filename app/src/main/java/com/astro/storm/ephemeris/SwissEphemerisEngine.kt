@@ -215,8 +215,7 @@ class SwissEphemerisEngine(context: Context) {
      */
     private fun determineHouse(
         longitude: Double,
-        houseCusps: DoubleArray,
-        ascendant: Double
+        houseCusps: DoubleArray
     ): Int {
         val normalizedLongitude = (longitude % 360.0 + 360.0) % 360.0
 

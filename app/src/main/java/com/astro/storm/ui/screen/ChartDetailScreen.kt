@@ -39,7 +39,6 @@ fun ChartDetailScreen(
     chartId: Long,
     onNavigateBack: () -> Unit
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val chartRenderer = remember { ChartRenderer() }
 
@@ -74,7 +73,7 @@ fun ChartDetailScreen(
                 title = { Text("Chart Details") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -246,7 +245,7 @@ fun ChartDetailsSection(chart: VedicChart) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                     )
