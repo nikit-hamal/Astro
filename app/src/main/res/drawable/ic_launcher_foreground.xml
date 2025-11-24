@@ -31,8 +31,8 @@
         android:textSize="36sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif"
-        android:x="54"
-        android:y="66"
+        android:x="54dp"
+        android:y="66dp"
         android:fillColor="#FFFFFF"/>
   </group>
 </vector>
