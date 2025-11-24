@@ -53,7 +53,7 @@ class ChartRenderer {
             drawHouseDivisions(center, diamondSize)
 
             // Draw house numbers
-            drawHouseNumbers(center, diamondSize, chart.ascendant)
+            drawHouseNumbers(center, diamondSize)
 
             // Draw planets in houses
             drawPlanets(center, diamondSize, chart)

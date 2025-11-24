@@ -191,7 +191,7 @@ class SwissEphemerisEngine(context: Context) {
         val (nakshatra, pada) = Nakshatra.fromLongitude(longitude)
 
         // Determine house
-        val house = determineHouse(longitude, houseCusps, ascendant)
+        val house = determineHouse(longitude, houseCusps)
 
         return PlanetPosition(
             planet = planet,
