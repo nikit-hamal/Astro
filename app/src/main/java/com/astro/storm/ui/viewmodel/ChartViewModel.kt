@@ -5,13 +5,10 @@ import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.astro.storm.data.local.ChartDatabase
-import com.astro.storm.data.model.BirthData
-import com.astro.storm.data.model.HouseSystem
-import com.astro.storm.data.model.VedicChart
+import com.astro.storm.data.model.*
 import com.astro.storm.data.repository.ChartRepository
 import com.astro.storm.data.repository.SavedChart
 import com.astro.storm.ephemeris.SwissEphemerisEngine
-import com.astro.storm.ui.chart.ChartRenderer
 import com.astro.storm.util.ExportUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -26,7 +23,6 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ChartRepository
     private val ephemerisEngine: SwissEphemerisEngine
-    private val chartRenderer = ChartRenderer()
 
     private val _uiState = MutableStateFlow<ChartUiState>(ChartUiState.Initial)
     val uiState: StateFlow<ChartUiState> = _uiState.asStateFlow()
@@ -64,7 +60,8 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
                 val chart = withContext(Dispatchers.Default) {
                     ephemerisEngine.calculateVedicChart(birthData, houseSystem)
                 }
-                _uiState.value = ChartUiState.Success(chart)
+                val divisionalCharts = calculateDivisionalCharts(chart)
+                _uiState.value = ChartUiState.Success(chart, divisionalCharts)
             } catch (e: Exception) {
                 _uiState.value = ChartUiState.Error(e.message ?: "Unknown error occurred")
             }
@@ -81,7 +78,8 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val chart = repository.getChartById(chartId)
                 if (chart != null) {
-                    _uiState.value = ChartUiState.Success(chart)
+                    val divisionalCharts = calculateDivisionalCharts(chart)
+                    _uiState.value = ChartUiState.Success(chart, divisionalCharts)
                 } else {
                     _uiState.value = ChartUiState.Error("Chart not found")
                 }
@@ -121,25 +119,6 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Export chart as image
      */
-    fun exportChartImage(chart: VedicChart, fileName: String) {
-        viewModelScope.launch {
-            try {
-                val bitmap = withContext(Dispatchers.Default) {
-                    chartRenderer.createChartBitmap(chart, 2048, 2048)
-                }
-
-                val result = ExportUtils.saveChartImage(getApplication(), bitmap, fileName)
-                result.onSuccess {
-                    _uiState.value = ChartUiState.Exported("Image saved successfully")
-                }.onFailure {
-                    _uiState.value = ChartUiState.Error("Failed to save image: ${it.message}")
-                }
-            } catch (e: Exception) {
-                _uiState.value = ChartUiState.Error("Export failed: ${e.message}")
-            }
-        }
-    }
-
     /**
      * Copy chart plaintext to clipboard
      */
@@ -169,11 +148,22 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
 /**
  * UI states for chart operations
  */
+private fun calculateDivisionalCharts(chart: VedicChart): List<DivisionalChart> {
+    return listOf(
+        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D9),
+        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D10),
+        ephemerisEngine.calculateDivisionalChart(chart, DivisionalChartType.D60)
+    )
+}
+
 sealed class ChartUiState {
     object Initial : ChartUiState()
     object Loading : ChartUiState()
     object Calculating : ChartUiState()
-    data class Success(val chart: VedicChart) : ChartUiState()
+    data class Success(
+        val chart: VedicChart,
+        val divisionalCharts: List<DivisionalChart>
+    ) : ChartUiState()
     data class Error(val message: String) : ChartUiState()
     object Saved : ChartUiState()
     data class Exported(val message: String) : ChartUiState()

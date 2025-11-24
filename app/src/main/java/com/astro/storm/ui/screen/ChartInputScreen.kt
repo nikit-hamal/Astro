@@ -7,24 +7,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.astro.storm.data.model.BirthData
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Screen for inputting birth data
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartInputScreen(
@@ -33,36 +30,37 @@ fun ChartInputScreen(
     onChartCalculated: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var name by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("1990-01-01") }
-    var time by remember { mutableStateOf("12:00") }
+    var date by remember { mutableStateOf(LocalDate.now()) }
+    var time by remember { mutableStateOf(LocalTime.now()) }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
     var timezone by remember { mutableStateOf(ZoneId.systemDefault().id) }
 
-    var showError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState) {
-        when (uiState) {
+        when (val state = uiState) {
             is ChartUiState.Success -> {
-                val chart = (uiState as ChartUiState.Success).chart
-                viewModel.saveChart(chart)
+                viewModel.saveChart(state.chart)
             }
             is ChartUiState.Saved -> {
                 onChartCalculated()
             }
             is ChartUiState.Error -> {
-                errorMessage = (uiState as ChartUiState.Error).message
-                showError = true
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetState()
             }
             else -> {}
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("New Chart") },
@@ -70,10 +68,7 @@ fun ChartInputScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
         }
     ) { paddingValues ->
@@ -85,94 +80,88 @@ fun ChartInputScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Name Input
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+            InputCard(title = "Personal Information") {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                )
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Location") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) }
+                )
+            }
 
-            // Location Input
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text("Location") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+            InputCard(title = "Date and Time") {
+                OutlinedTextField(
+                    value = date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    onValueChange = { },
+                    label = { Text("Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.CalendarToday, contentDescription = "Select Date")
+                        }
+                    }
+                )
 
-            // Date Input
-            OutlinedTextField(
-                value = date,
-                onValueChange = { date = it },
-                label = { Text("Date (YYYY-MM-DD)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                trailingIcon = {
-                    Icon(Icons.Default.CalendarToday, contentDescription = null)
-                },
-                shape = RoundedCornerShape(12.dp)
-            )
+                OutlinedTextField(
+                    value = time.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    onValueChange = { },
+                    label = { Text("Time") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showTimePicker = true }) {
+                            Icon(Icons.Default.Schedule, contentDescription = "Select Time")
+                        }
+                    }
+                )
+            }
 
-            // Time Input
-            OutlinedTextField(
-                value = time,
-                onValueChange = { time = it },
-                label = { Text("Time (HH:MM)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                trailingIcon = {
-                    Icon(Icons.Default.Schedule, contentDescription = null)
-                },
-                shape = RoundedCornerShape(12.dp)
-            )
+            InputCard(title = "Geographical Coordinates") {
+                OutlinedTextField(
+                    value = latitude,
+                    onValueChange = { latitude = it },
+                    label = { Text("Latitude") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    leadingIcon = { Icon(Icons.Default.Public, contentDescription = null) }
+                )
 
-            // Latitude Input
-            OutlinedTextField(
-                value = latitude,
-                onValueChange = { latitude = it },
-                label = { Text("Latitude") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                supportingText = { Text("Example: 40.7128 for New York") },
-                shape = RoundedCornerShape(12.dp)
-            )
+                OutlinedTextField(
+                    value = longitude,
+                    onValueChange = { longitude = it },
+                    label = { Text("Longitude") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    leadingIcon = { Icon(Icons.Default.Public, contentDescription = null) }
+                )
 
-            // Longitude Input
-            OutlinedTextField(
-                value = longitude,
-                onValueChange = { longitude = it },
-                label = { Text("Longitude") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                supportingText = { Text("Example: -74.0060 for New York") },
-                shape = RoundedCornerShape(12.dp)
-            )
+                OutlinedTextField(
+                    value = timezone,
+                    onValueChange = { timezone = it },
+                    label = { Text("Timezone") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Language, contentDescription = null) }
+                )
+            }
 
-            // Timezone Input
-            OutlinedTextField(
-                value = timezone,
-                onValueChange = { timezone = it },
-                label = { Text("Timezone") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                supportingText = { Text("Example: America/New_York") },
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Calculate Button
             Button(
                 onClick = {
                     try {
-                        val dateTime = LocalDateTime.parse("${date}T${time}:00")
+                        val dateTime = LocalDateTime.of(date, time)
                         val birthData = BirthData(
                             name = name.ifBlank { "Unknown" },
                             dateTime = dateTime,
@@ -183,14 +172,12 @@ fun ChartInputScreen(
                         )
                         viewModel.calculateChart(birthData)
                     } catch (e: Exception) {
-                        errorMessage = "Invalid input: ${e.message}"
-                        showError = true
+                        snackbarHostState.showSnackbar("Invalid input: ${e.message}")
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
                 enabled = uiState !is ChartUiState.Calculating
             ) {
                 if (uiState is ChartUiState.Calculating) {
@@ -205,16 +192,90 @@ fun ChartInputScreen(
         }
     }
 
-    if (showError) {
-        AlertDialog(
-            onDismissRequest = { showError = false },
-            title = { Text("Error") },
-            text = { Text(errorMessage) },
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { showError = false }) {
+                TextButton(
+                    onClick = { showDatePicker = false }
+                ) {
                     Text("OK")
                 }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false }
+                ) {
+                    Text("Cancel")
+                }
             }
-        )
+        ) {
+            DatePicker(state = rememberDatePickerState())
+        }
     }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = { showTimePicker = false }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showTimePicker = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            TimePicker(state = rememberTimePickerState())
+        }
+    }
+}
+
+@Composable
+fun InputCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            content()
+        }
+    }
+}
+@Composable
+fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    dismissButton: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(text = "Select Time") },
+        text = {
+            content()
+        },
+        confirmButton = confirmButton,
+        dismissButton = dismissButton
+    )
 }

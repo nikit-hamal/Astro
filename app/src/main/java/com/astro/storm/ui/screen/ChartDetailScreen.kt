@@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.astro.storm.data.model.VedicChart
-import com.astro.storm.ui.chart.ChartRenderer
+import com.astro.storm.ui.chart.SouthIndianChart
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -40,10 +40,7 @@ fun ChartDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val chartRenderer = remember { ChartRenderer() }
-
-    var showExportDialog by remember { mutableStateOf(false) }
-    var exportMessage by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val permissionsState = rememberMultiplePermissionsState(
         permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -58,16 +55,17 @@ fun ChartDetailScreen(
     }
 
     LaunchedEffect(uiState) {
-        when (uiState) {
+        when (val state = uiState) {
             is ChartUiState.Exported -> {
-                exportMessage = (uiState as ChartUiState.Exported).message
-                showExportDialog = true
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetState()
             }
             else -> {}
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Chart Details") },
@@ -112,15 +110,7 @@ fun ChartDetailScreen(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
                     ) {
-                        Canvas(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            chartRenderer.drawSouthIndianChart(
-                                drawScope = this,
-                                chart = chart,
-                                size = size.minDimension
-                            )
-                        }
+                        SouthIndianChart(planetPositions = chart.planetPositions)
                     }
 
                     // Export Actions
@@ -130,25 +120,6 @@ fun ChartDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
-                            onClick = {
-                                if (permissionsState.allPermissionsGranted) {
-                                    viewModel.exportChartImage(
-                                        chart,
-                                        "chart_${chart.birthData.name}_${System.currentTimeMillis()}"
-                                    )
-                                } else {
-                                    permissionsState.launchMultiplePermissionRequest()
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Save Image")
-                        }
-
                         Button(
                             onClick = {
                                 viewModel.copyChartToClipboard(chart)
@@ -164,6 +135,9 @@ fun ChartDetailScreen(
 
                     // Chart Details
                     ChartDetailsSection(chart = chart)
+
+                    // Divisional Charts
+                    DivisionalChartScreen(divisionalCharts = state.divisionalCharts)
                 }
             }
             is ChartUiState.Error -> {
@@ -182,25 +156,6 @@ fun ChartDetailScreen(
             }
             else -> {}
         }
-    }
-
-    if (showExportDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showExportDialog = false
-                viewModel.resetState()
-            },
-            title = { Text("Success") },
-            text = { Text(exportMessage) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showExportDialog = false
-                    viewModel.resetState()
-                }) {
-                    Text("OK")
-                }
-            }
-        )
     }
 }
 

@@ -265,6 +265,72 @@ class SwissEphemerisEngine(context: Context) {
     }
 
     /**
+     * Calculate divisional chart (Varga)
+     */
+    fun calculateDivisionalChart(
+        mainChart: VedicChart,
+        chartType: DivisionalChartType
+    ): DivisionalChart {
+        val divisionalPlanetPositions = mainChart.planetPositions.map { planetPosition ->
+            // D1 Chart Longitude (in degrees)
+            val d1Longitude = planetPosition.longitude
+
+            // Sign index (0-11)
+            val signIndex = (d1Longitude / 30).toInt()
+
+            // Longitude within the sign (0-30 degrees)
+            val longitudeInSign = d1Longitude % 30
+
+            // Formula for divisional longitude
+            val divisionalLongitude = (longitudeInSign * chartType.division) % 360
+
+            // Recalculate planet details for the new longitude
+            recalculatePlanetPositionForDivisionalChart(planetPosition, divisionalLongitude)
+        }
+
+        return DivisionalChart(
+            type = chartType,
+            planetPositions = divisionalPlanetPositions
+        )
+    }
+
+    /**
+     * Recalculate planet position based on a new longitude for divisional charts
+     */
+    private fun recalculatePlanetPositionForDivisionalChart(
+        originalPosition: PlanetPosition,
+        newLongitude: Double
+    ): PlanetPosition {
+        // Normalize longitude
+        val normalizedLongitude = (newLongitude % 360.0 + 360.0) % 360.0
+
+        // Determine sign and degree within sign
+        val sign = ZodiacSign.fromLongitude(normalizedLongitude)
+        val degreeInSign = normalizedLongitude % 30.0
+        val degree = degreeInSign.toInt().toDouble()
+        val minutes = ((degreeInSign - degree) * 60.0)
+        val seconds = ((minutes - minutes.toInt()) * 60.0)
+
+        // Nakshatra and Pada
+        val (nakshatra, pada) = Nakshatra.fromLongitude(normalizedLongitude)
+
+        // For divisional charts, we don't calculate house positions in the same way,
+        // so we can set it to 1 or another default value.
+        val house = 1
+
+        return originalPosition.copy(
+            longitude = normalizedLongitude,
+            sign = sign,
+            degree = degree,
+            minutes = minutes.toInt().toDouble(),
+            seconds = seconds,
+            nakshatra = nakshatra,
+            nakshatraPada = pada,
+            house = house
+        )
+    }
+
+    /**
      * Clean up resources
      */
     fun close() {
