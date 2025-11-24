@@ -8,7 +8,7 @@ enum class HouseSystem(val code: Char, val displayName: String) {
     KOCH('K', "Koch"),
     PORPHYRIUS('O', "Porphyrius"),
     REGIOMONTANUS('R', "Regiomontanus"),
-    CAMPANUS('C', "Campanus'),
+    CAMPANUS('C', "Campanus"),
     EQUAL('E', "Equal"),
     WHOLE_SIGN('W', "Whole Sign"),
     VEHLOW('V', "Vehlow"),
