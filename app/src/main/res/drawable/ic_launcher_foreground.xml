@@ -28,12 +28,11 @@
         android:fillColor="#9BA8E0"/>
     <text
         android:text="A"
-        android:textSize="36"
+        android:textSize="36sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif"
         android:x="54"
         android:y="66"
-        android:textAnchor="middle"
         android:fillColor="#FFFFFF"/>
   </group>
 </vector>
