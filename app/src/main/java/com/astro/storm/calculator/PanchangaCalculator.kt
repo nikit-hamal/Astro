@@ -1,6 +1,7 @@
 package com.astro.storm.calculator
 
 import com.astro.storm.data.model.*
+import swisseph.DblObj
 import swisseph.SweConst
 import swisseph.SweDate
 import swisseph.SwissEph
@@ -260,7 +261,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val geopos = DblObj()
+        geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
         val tret = doubleArrayOf(0.0, 0.0)
         val serr = StringBuffer()
 
@@ -289,7 +291,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val geopos = DblObj()
+        geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
         val tret = doubleArrayOf(0.0, 0.0)
         val serr = StringBuffer()
 
@@ -319,7 +322,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val geopos = DblObj()
+            geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
             val tret = doubleArrayOf(0.0, 0.0)
             val serr = StringBuffer()
 
@@ -352,7 +356,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val geopos = DblObj()
+            geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
             val tret = doubleArrayOf(0.0, 0.0)
             val serr = StringBuffer()
 
