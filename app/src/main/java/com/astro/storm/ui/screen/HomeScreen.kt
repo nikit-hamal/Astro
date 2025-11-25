@@ -1,6 +1,5 @@
 package com.astro.storm.ui.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +20,6 @@ import com.astro.storm.ui.viewmodel.ChartViewModel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/**
- * Home screen showing saved charts
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -43,18 +40,32 @@ fun HomeScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onCreateNewChart,
-                icon = { Icon(Icons.Default.Add, contentDescription = "Create Chart") },
-                text = { Text("New Chart") },
-                containerColor = MaterialTheme.colorScheme.primary
+                icon = {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Create Chart"
+                    )
+                },
+                text = {
+                    Text(
+                        "New Chart",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp)
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (savedCharts.isEmpty()) {
             EmptyState(
@@ -67,8 +78,8 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(savedCharts, key = { it.id }) { chart ->
                     ChartListItem(
@@ -83,28 +94,35 @@ fun HomeScreen(
 }
 
 @Composable
-fun EmptyState(modifier: Modifier = Modifier) {
+private fun EmptyState(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Icon(
+            imageVector = Icons.Outlined.StarOutline,
+            contentDescription = null,
+            modifier = Modifier.size(72.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = "No Charts Yet",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Create your first Vedic chart",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
         )
     }
 }
 
 @Composable
-fun ChartListItem(
+private fun ChartListItem(
     chart: SavedChart,
     onClick: () -> Unit,
     onDelete: () -> Unit
@@ -117,7 +135,7 @@ fun ChartListItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -129,29 +147,34 @@ fun ChartListItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = chart.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = formatDateTime(chart.dateTime),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = chart.location,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            IconButton(onClick = onDelete) {
+            IconButton(
+                onClick = onDelete,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+            ) {
                 Icon(
-                    Icons.Default.Delete,
+                    Icons.Outlined.Delete,
                     contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -161,7 +184,7 @@ fun ChartListItem(
 private fun formatDateTime(dateTimeStr: String): String {
     return try {
         val dateTime = LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-        dateTime.format(DateTimeFormatter.ofPattern("MMM dd, yyyy • hh:mm a"))
+        dateTime.format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a"))
     } catch (e: Exception) {
         dateTimeStr
     }
