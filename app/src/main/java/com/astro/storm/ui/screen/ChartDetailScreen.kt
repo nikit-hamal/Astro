@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,8 @@ import com.astro.storm.ui.viewmodel.ChartViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 
@@ -70,7 +73,10 @@ fun ChartDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val chartRenderer = remember { ChartRenderer() }
     val snackbarHostState = remember { SnackbarHostState() }
-    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // Track the current chart to prevent state loss during snackbar
+    var currentChart by remember { mutableStateOf<VedicChart?>(null) }
 
     val permissionsState = rememberMultiplePermissionsState(
         permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -84,34 +90,48 @@ fun ChartDetailScreen(
         viewModel.loadChart(chartId)
     }
 
-    // Handle snackbar messages
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(
-                message = it,
-                duration = SnackbarDuration.Short
-            )
-            snackbarMessage = null
-        }
-    }
-
+    // Update current chart when successfully loaded
     LaunchedEffect(uiState) {
-        when (uiState) {
+        when (val state = uiState) {
+            is ChartUiState.Success -> {
+                currentChart = state.chart
+            }
             is ChartUiState.Exported -> {
-                snackbarMessage = (uiState as ChartUiState.Exported).message
+                // Show snackbar without losing chart state
+                snackbarHostState.showSnackbar(
+                    message = state.message,
+                    duration = SnackbarDuration.Short
+                )
+                // Delay before resetting to ensure snackbar shows properly
+                delay(100)
                 viewModel.resetState()
             }
             else -> {}
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ScreenBackground)
-    ) {
+    // Use Scaffold for proper snackbar management that doesn't interfere with content
+    Scaffold(
+        containerColor = ScreenBackground,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+            ) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = CardBackgroundLight,
+                    contentColor = TextPrimary,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+        }
+    ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             // Custom Top Bar
             Row(
@@ -140,8 +160,11 @@ fun ChartDetailScreen(
                 Spacer(modifier = Modifier.size(48.dp))
             }
 
-            when (val state = uiState) {
-                is ChartUiState.Loading -> {
+            // Use currentChart to maintain display even during snackbar/export operations
+            val displayChart = currentChart ?: (uiState as? ChartUiState.Success)?.chart
+
+            when {
+                uiState is ChartUiState.Loading && displayChart == null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -149,20 +172,25 @@ fun ChartDetailScreen(
                         CircularProgressIndicator(color = AccentColor)
                     }
                 }
-                is ChartUiState.Success -> {
-                    val chart = state.chart
+                displayChart != null -> {
                     ChartContent(
-                        chart = chart,
+                        chart = displayChart,
                         chartRenderer = chartRenderer,
                         onCopyClick = {
-                            viewModel.copyChartToClipboard(chart)
-                            snackbarMessage = "Chart data copied"
+                            viewModel.copyChartToClipboard(displayChart)
+                            // Show copy confirmation snackbar
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Chart data copied to clipboard",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
                         },
                         onDownloadClick = {
                             if (permissionsState.allPermissionsGranted) {
                                 viewModel.exportChartImage(
-                                    chart,
-                                    "chart_${chart.birthData.name}_${System.currentTimeMillis()}"
+                                    displayChart,
+                                    "chart_${displayChart.birthData.name.replace(" ", "_")}_${System.currentTimeMillis()}"
                                 )
                             } else {
                                 permissionsState.launchMultiplePermissionRequest()
@@ -170,33 +198,19 @@ fun ChartDetailScreen(
                         }
                     )
                 }
-                is ChartUiState.Error -> {
+                uiState is ChartUiState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = state.message,
+                            text = (uiState as ChartUiState.Error).message,
                             color = Color(0xFFCF6679),
                             fontSize = 16.sp
                         )
                     }
                 }
-                else -> {}
             }
-        }
-
-        // Snackbar
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) { data ->
-            Snackbar(
-                snackbarData = data,
-                containerColor = CardBackground,
-                contentColor = TextPrimary,
-                shape = RoundedCornerShape(12.dp)
-            )
         }
     }
 }

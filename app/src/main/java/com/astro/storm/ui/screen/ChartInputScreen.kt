@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -17,9 +19,12 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.astro.storm.data.model.BirthData
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -48,7 +54,7 @@ private val ChipBackground = Color(0xFF3D322B)
 private val ButtonBackground = Color(0xFFB8A99A)
 private val ButtonText = Color(0xFF1C1410)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ChartInputScreen(
     viewModel: ChartViewModel,
@@ -130,15 +136,24 @@ fun ChartInputScreen(
         }
     }
 
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // BringIntoViewRequesters for coordinate fields
+    val latitudeRequester = remember { BringIntoViewRequester() }
+    val longitudeRequester = remember { BringIntoViewRequester() }
+    val altitudeRequester = remember { BringIntoViewRequester() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(ScreenBackground)
+            .imePadding() // Handle keyboard insets
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
                 .padding(top = 48.dp, bottom = 32.dp)
         ) {
@@ -298,48 +313,59 @@ fun ChartInputScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StyledOutlinedTextField(
+                StyledOutlinedTextFieldWithFocusScroll(
                     value = latitude,
                     onValueChange = { latitude = it },
                     label = "Latitude",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .bringIntoViewRequester(latitudeRequester),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Right) }
-                    )
+                    ),
+                    bringIntoViewRequester = latitudeRequester,
+                    coroutineScope = coroutineScope
                 )
 
-                StyledOutlinedTextField(
+                StyledOutlinedTextFieldWithFocusScroll(
                     value = longitude,
                     onValueChange = { longitude = it },
                     label = "Longitude",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .bringIntoViewRequester(longitudeRequester),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
+                    ),
+                    bringIntoViewRequester = longitudeRequester,
+                    coroutineScope = coroutineScope
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            StyledOutlinedTextField(
+            StyledOutlinedTextFieldWithFocusScroll(
                 value = altitude,
                 onValueChange = { altitude = it },
                 label = "Altitude (m)",
+                modifier = Modifier.bringIntoViewRequester(altitudeRequester),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = { focusManager.clearFocus() }
-                )
+                ),
+                bringIntoViewRequester = altitudeRequester,
+                coroutineScope = coroutineScope
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -593,6 +619,61 @@ private fun StyledOutlinedTextField(
             focusedBorderColor = BorderColor,
             unfocusedBorderColor = BorderColor,
             focusedLabelColor = TextSecondary,
+            unfocusedLabelColor = TextSecondary,
+            cursorColor = AccentColor
+        ),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        textStyle = LocalTextStyle.current.copy(fontSize = 16.sp)
+    )
+}
+
+/**
+ * Styled text field that automatically scrolls into view when focused.
+ * This ensures keyboard doesn't obscure the field when editing coordinates.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun StyledOutlinedTextFieldWithFocusScroll(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    bringIntoViewRequester: BringIntoViewRequester,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = {
+            Text(
+                label,
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused) {
+                    // Bring the field into view when focused
+                    coroutineScope.launch {
+                        // Small delay to let keyboard animation start
+                        kotlinx.coroutines.delay(100)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            focusedBorderColor = AccentColor,
+            unfocusedBorderColor = BorderColor,
+            focusedLabelColor = AccentColor,
             unfocusedLabelColor = TextSecondary,
             cursorColor = AccentColor
         ),
