@@ -261,9 +261,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = DblObj()
-        geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
-        val tret = doubleArrayOf(0.0, 0.0)
+        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val tret = DblObj()
         val serr = StringBuffer()
 
         swissEph.swe_rise_trans(
@@ -279,7 +278,7 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
             serr
         )
 
-        return julianDayToLocalDateTime(tret[0], timezone)
+        return julianDayToLocalDateTime(tret.`val`, timezone)
     }
 
     /**
@@ -291,9 +290,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = DblObj()
-        geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
-        val tret = doubleArrayOf(0.0, 0.0)
+        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val tret = DblObj()
         val serr = StringBuffer()
 
         swissEph.swe_rise_trans(
@@ -309,7 +307,7 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
             serr
         )
 
-        return julianDayToLocalDateTime(tret[0], timezone)
+        return julianDayToLocalDateTime(tret.`val`, timezone)
     }
 
     /**
@@ -322,9 +320,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = DblObj()
-            geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
-            val tret = doubleArrayOf(0.0, 0.0)
+            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val tret = DblObj()
             val serr = StringBuffer()
 
             val result = swissEph.swe_rise_trans(
@@ -340,7 +337,7 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
                 serr
             )
 
-            if (result >= 0) julianDayToLocalDateTime(tret[0], timezone) else null
+            if (result >= 0) julianDayToLocalDateTime(tret.`val`, timezone) else null
         } catch (e: Exception) {
             null
         }
@@ -356,9 +353,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = DblObj()
-            geopos.`val` = doubleArrayOf(longitude, latitude, 0.0)
-            val tret = doubleArrayOf(0.0, 0.0)
+            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val tret = DblObj()
             val serr = StringBuffer()
 
             val result = swissEph.swe_rise_trans(
@@ -374,7 +370,7 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
                 serr
             )
 
-            if (result >= 0) julianDayToLocalDateTime(tret[0], timezone) else null
+            if (result >= 0) julianDayToLocalDateTime(tret.`val`, timezone) else null
         } catch (e: Exception) {
             null
         }
