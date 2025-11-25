@@ -99,18 +99,32 @@ fun ChartInputScreen(
         ).distinct()
     }
 
+    // Reset state when entering the screen to prevent auto-navigation
+    LaunchedEffect(Unit) {
+        viewModel.resetState()
+    }
+
+    // Track if we initiated a chart calculation in this session
+    var chartCalculationInitiated by remember { mutableStateOf(false) }
+
     LaunchedEffect(uiState) {
         when (uiState) {
             is ChartUiState.Success -> {
-                val chart = (uiState as ChartUiState.Success).chart
-                viewModel.saveChart(chart)
+                if (chartCalculationInitiated) {
+                    val chart = (uiState as ChartUiState.Success).chart
+                    viewModel.saveChart(chart)
+                }
             }
             is ChartUiState.Saved -> {
-                onChartCalculated()
+                if (chartCalculationInitiated) {
+                    chartCalculationInitiated = false
+                    onChartCalculated()
+                }
             }
             is ChartUiState.Error -> {
                 errorMessage = (uiState as ChartUiState.Error).message
                 showError = true
+                chartCalculationInitiated = false
             }
             else -> {}
         }
@@ -135,7 +149,7 @@ fun ChartInputScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Ultra-Precise Vedic Chart",
+                    text = "AstroStorm Chart",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Normal,
                     color = TextPrimary,
@@ -364,6 +378,7 @@ fun ChartInputScreen(
                             timezone = selectedTimezone,
                             location = locationLabel.ifBlank { "Unknown" }
                         )
+                        chartCalculationInitiated = true
                         viewModel.calculateChart(birthData)
                     } catch (e: Exception) {
                         errorMessage = "Please check your input values"

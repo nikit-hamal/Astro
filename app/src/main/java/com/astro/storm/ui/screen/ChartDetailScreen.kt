@@ -25,17 +25,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.ephemeris.DivisionalChartCalculator
 import com.astro.storm.ephemeris.DivisionalChartData
 import com.astro.storm.ephemeris.PanchangaCalculator
 import com.astro.storm.ephemeris.PanchangaData
 import com.astro.storm.ui.chart.ChartRenderer
-import com.astro.storm.ui.theme.*
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -43,6 +44,21 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
+
+// Dark brown theme colors matching the app
+private val ScreenBackground = Color(0xFF1C1410)
+private val CardBackground = Color(0xFF2A201A)
+private val CardBackgroundLight = Color(0xFF3D322B)
+private val AccentColor = Color(0xFFB8A99A)
+private val TextPrimary = Color(0xFFE8DFD6)
+private val TextSecondary = Color(0xFFB8A99A)
+private val TextMuted = Color(0xFF8A7A6A)
+private val BorderColor = Color(0xFF4A3F38)
+private val ButtonBackground = Color(0xFFB8A99A)
+private val ButtonText = Color(0xFF1C1410)
+private val ChartBackground = Color(0xFF231A15)
+private val SuccessColor = Color(0xFF81C784)
+private val WarningColor = Color(0xFFFFB74D)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -89,92 +105,98 @@ fun ChartDetailScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Chart Details",
-                        style = MaterialTheme.typography.titleLarge
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ScreenBackground)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Custom Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(top = 32.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(24.dp)
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
+                }
+                Text(
+                    text = "Chart Details",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                // Placeholder for alignment
+                Spacer(modifier = Modifier.size(48.dp))
+            }
+
+            when (val state = uiState) {
+                is ChartUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = AccentColor)
+                    }
+                }
+                is ChartUiState.Success -> {
+                    val chart = state.chart
+                    ChartContent(
+                        chart = chart,
+                        chartRenderer = chartRenderer,
+                        onCopyClick = {
+                            viewModel.copyChartToClipboard(chart)
+                            snackbarMessage = "Chart data copied"
+                        },
+                        onDownloadClick = {
+                            if (permissionsState.allPermissionsGranted) {
+                                viewModel.exportChartImage(
+                                    chart,
+                                    "chart_${chart.birthData.name}_${System.currentTimeMillis()}"
+                                )
+                            } else {
+                                permissionsState.launchMultiplePermissionRequest()
+                            }
+                        }
+                    )
+                }
+                is ChartUiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = state.message,
+                            color = Color(0xFFCF6679),
+                            fontSize = 16.sp
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
-                )
+                }
+                else -> {}
+            }
+        }
+
+        // Snackbar
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = CardBackground,
+                contentColor = TextPrimary,
+                shape = RoundedCornerShape(12.dp)
             )
-        },
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        when (val state = uiState) {
-            is ChartUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            is ChartUiState.Success -> {
-                val chart = state.chart
-                ChartContent(
-                    chart = chart,
-                    chartRenderer = chartRenderer,
-                    paddingValues = paddingValues,
-                    onCopyClick = {
-                        viewModel.copyChartToClipboard(chart)
-                        snackbarMessage = "Chart data copied"
-                    },
-                    onDownloadClick = {
-                        if (permissionsState.allPermissionsGranted) {
-                            viewModel.exportChartImage(
-                                chart,
-                                "chart_${chart.birthData.name}_${System.currentTimeMillis()}"
-                            )
-                        } else {
-                            permissionsState.launchMultiplePermissionRequest()
-                        }
-                    }
-                )
-            }
-            is ChartUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-            else -> {}
         }
     }
 }
@@ -183,7 +205,6 @@ fun ChartDetailScreen(
 private fun ChartContent(
     chart: VedicChart,
     chartRenderer: ChartRenderer,
-    paddingValues: PaddingValues,
     onCopyClick: () -> Unit,
     onDownloadClick: () -> Unit
 ) {
@@ -217,13 +238,13 @@ private fun ChartContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
     ) {
         // Lagna Chart Visualization
         ChartCard(
             title = "Lagna Chart (D1)",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(vertical = 8.dp)
         ) {
             Canvas(
                 modifier = Modifier
@@ -243,16 +264,16 @@ private fun ChartContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FilledTonalButton(
+            Button(
                 onClick = onDownloadClick,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CardBackgroundLight,
+                    contentColor = TextPrimary
                 )
             ) {
                 Icon(
@@ -264,13 +285,13 @@ private fun ChartContent(
                 Text("Download")
             }
 
-            FilledTonalButton(
+            Button(
                 onClick = onCopyClick,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentColor,
+                    contentColor = ButtonText
                 )
             ) {
                 Icon(
@@ -365,9 +386,7 @@ private fun ChartContent(
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                )
+                HorizontalDivider(color = BorderColor.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -376,25 +395,25 @@ private fun ChartContent(
                     Column {
                         Text(
                             "Sunrise",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontSize = 12.sp,
+                            color = TextMuted
                         )
                         Text(
                             panchanga.sunrise,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.tertiary
+                            fontSize = 14.sp,
+                            color = WarningColor
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             "Sunset",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontSize = 12.sp,
+                            color = TextMuted
                         )
                         Text(
                             panchanga.sunset,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary
+                            fontSize = 14.sp,
+                            color = AccentColor
                         )
                     }
                 }
@@ -432,7 +451,7 @@ private fun ChartContent(
                 if (position != chart.planetPositions.last()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                        color = BorderColor.copy(alpha = 0.3f)
                     )
                 }
             }
@@ -484,8 +503,9 @@ private fun DivisionalChartsSection(
             // Planet positions in this chart
             Text(
                 "Planet Positions",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AccentColor,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -498,16 +518,13 @@ private fun DivisionalChartsSection(
                 ) {
                     Text(
                         text = position.planet.displayName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (position.isRetrograde)
-                            MaterialTheme.colorScheme.secondary
-                        else
-                            MaterialTheme.colorScheme.onSurface
+                        fontSize = 14.sp,
+                        color = if (position.isRetrograde) WarningColor else TextPrimary
                     )
                     Text(
                         text = "${position.sign.abbreviation} ${formatDegreeInSign(position.longitude)}${if (position.isRetrograde) " (R)" else ""} | H${position.house}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 14.sp,
+                        color = TextMuted
                     )
                 }
             }
@@ -521,21 +538,19 @@ private fun ChartCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        color = CardBackground
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AccentColor,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
             content()
@@ -553,15 +568,12 @@ private fun ExpandableSection(
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        color = CardBackground
     ) {
         Column {
             Row(
@@ -578,21 +590,22 @@ private fun ExpandableSection(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = AccentColor,
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
                         )
                         subtitle?.let {
                             Text(
                                 text = it,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontSize = 12.sp,
+                                color = TextMuted
                             )
                         }
                     }
@@ -600,7 +613,7 @@ private fun ExpandableSection(
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = TextMuted
                 )
             }
 
@@ -633,13 +646,13 @@ private fun InfoRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontSize = 14.sp,
+            color = TextMuted
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            color = TextPrimary,
             fontWeight = FontWeight.Medium
         )
     }
@@ -665,22 +678,21 @@ private fun PlanetRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = planetName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (isRetrograde)
-                        MaterialTheme.colorScheme.secondary
-                    else
-                        MaterialTheme.colorScheme.onSurface
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isRetrograde) WarningColor else TextPrimary
                 )
                 if (isRetrograde) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer
+                        color = WarningColor.copy(alpha = 0.2f)
                     ) {
                         Text(
                             text = "R",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -688,8 +700,8 @@ private fun PlanetRow(
             }
             Text(
                 text = "$sign $degree",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                fontSize = 14.sp,
+                color = AccentColor
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -699,13 +711,13 @@ private fun PlanetRow(
         ) {
             Text(
                 text = nakshatra,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 13.sp,
+                color = TextMuted
             )
             Text(
                 text = "House $house",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 13.sp,
+                color = TextMuted
             )
         }
     }
@@ -721,27 +733,27 @@ private fun PanchangaItem(
     Column(
         modifier = modifier
             .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                CardBackgroundLight,
                 RoundedCornerShape(12.dp)
             )
             .padding(12.dp)
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontSize = 11.sp,
+            color = TextMuted
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            color = TextPrimary,
             fontWeight = FontWeight.SemiBold
         )
         Text(
             text = subValue,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
+            fontSize = 12.sp,
+            color = AccentColor
         )
     }
 }
