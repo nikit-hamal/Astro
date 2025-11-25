@@ -15,28 +15,98 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+/**
+ * Complete Material 3 Dark Color Scheme for AstroStorm
+ * Implements the full M3 color system with semantic color roles
+ */
 private val DarkColorScheme = darkColorScheme(
-    primary = CosmicPurple,
-    secondary = NebulaPink,
-    tertiary = StarGold,
-    background = DeepSpace,
-    surface = DarkPurple,
-    onPrimary = MoonWhite,
-    onSecondary = MoonWhite,
-    onTertiary = DeepSpace,
-    onBackground = MoonWhite,
-    onSurface = MoonWhite,
+    // Primary colors
+    primary = Primary,
+    onPrimary = OnPrimary,
+    primaryContainer = PrimaryContainer,
+    onPrimaryContainer = OnPrimaryContainer,
+
+    // Secondary colors
+    secondary = Secondary,
+    onSecondary = OnSecondary,
+    secondaryContainer = SecondaryContainer,
+    onSecondaryContainer = OnSecondaryContainer,
+
+    // Tertiary colors
+    tertiary = Tertiary,
+    onTertiary = OnTertiary,
+    tertiaryContainer = TertiaryContainer,
+    onTertiaryContainer = OnTertiaryContainer,
+
+    // Error colors
+    error = Error,
+    onError = OnError,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer,
+
+    // Background colors
+    background = Background,
+    onBackground = OnBackground,
+
+    // Surface colors with full elevation system
+    surface = Surface,
+    onSurface = OnSurface,
+    surfaceVariant = SurfaceVariant,
+    onSurfaceVariant = OnSurfaceVariant,
+    surfaceTint = SurfaceTint,
+
+    // Inverse colors for snackbars and special UI
+    inverseSurface = InverseSurface,
+    inverseOnSurface = InverseOnSurface,
+    inversePrimary = InversePrimary,
+
+    // Outline colors
+    outline = Outline,
+    outlineVariant = OutlineVariant,
+
+    // Scrim for modals
+    scrim = Scrim,
+
+    // Surface containers - Material 3 elevation system
+    surfaceContainerLowest = SurfaceContainerLowest,
+    surfaceContainerLow = SurfaceContainerLow,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerHigh = SurfaceContainerHigh,
+    surfaceContainerHighest = SurfaceContainerHighest,
 )
 
+/**
+ * Light Color Scheme (optional - kept for future flexibility)
+ * Currently astronomy app uses dark theme by default
+ */
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = Primary,
+    onPrimary = OnPrimary,
+    primaryContainer = PrimaryContainer,
+    onPrimaryContainer = OnPrimaryContainer,
+    secondary = Secondary,
+    onSecondary = OnSecondary,
+    tertiary = Tertiary,
+    onTertiary = OnTertiary
 )
 
+/**
+ * AstroStorm Material 3 Theme
+ *
+ * Features:
+ * - Complete Material 3 color system implementation
+ * - Poppins font family throughout
+ * - Professional, modern, clean aesthetic
+ * - Full elevation system with surface containers
+ * - Proper system bar styling
+ *
+ * @param darkTheme Whether to use dark theme (default: true for astronomy aesthetic)
+ * @param dynamicColor Whether to use Android 12+ dynamic colors (default: false)
+ * @param content Composable content to theme
+ */
 @Composable
 fun AstroStormTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // Always default to dark for astronomy app
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -46,14 +116,21 @@ fun AstroStormTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme
-        else -> DarkColorScheme // Always use dark theme for astronomy app
+        else -> DarkColorScheme // Always use dark theme for astronomy aesthetic
     }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            // Set status bar to background color for seamless edge-to-edge
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            // Set navigation bar color
+            window.navigationBarColor = colorScheme.background.toArgb()
+            // Dark status bar icons for professional look
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = false
+            insetsController.isAppearanceLightNavigationBars = false
         }
     }
 
