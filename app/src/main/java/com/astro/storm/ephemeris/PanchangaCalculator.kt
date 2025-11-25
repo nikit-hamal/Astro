@@ -2,6 +2,7 @@ package com.astro.storm.ephemeris
 
 import android.content.Context
 import com.astro.storm.data.model.*
+import swisseph.DblObj
 import swisseph.SweConst
 import swisseph.SweDate
 import swisseph.SwissEph
@@ -286,7 +287,7 @@ class PanchangaCalculator(context: Context) {
         longitude: Double
     ): Pair<String, String> {
         val geopos = doubleArrayOf(longitude, latitude, 0.0)
-        val tret = DoubleArray(10)
+        val tret = DblObj()
         val serr = StringBuffer()
 
         // Calculate sunrise
@@ -303,7 +304,7 @@ class PanchangaCalculator(context: Context) {
             serr
         )
 
-        val sunriseJD = if (riseResult >= 0) tret[0] else julianDay
+        val sunriseJD = if (riseResult >= 0) tret.`val` else julianDay
 
         // Calculate sunset
         val setResult = swissEph.swe_rise_trans(
@@ -319,7 +320,7 @@ class PanchangaCalculator(context: Context) {
             serr
         )
 
-        val sunsetJD = if (setResult >= 0) tret[0] else julianDay
+        val sunsetJD = if (setResult >= 0) tret.`val` else julianDay
 
         return Pair(
             formatJulianDayToTime(sunriseJD),
