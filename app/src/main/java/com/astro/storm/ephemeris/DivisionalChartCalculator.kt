@@ -27,11 +27,14 @@ object DivisionalChartCalculator {
      * @return List of planet positions in Navamsa chart
      */
     fun calculateNavamsa(chart: VedicChart): DivisionalChartData {
-        val navamsaPositions = chart.planetPositions.map { position ->
-            calculateNavamsaPosition(position)
-        }
-
+        // First calculate the navamsa ascendant
         val navamsaAscendant = calculateNavamsaLongitude(chart.ascendant)
+        val navamsaAscendantSign = ZodiacSign.fromLongitude(navamsaAscendant)
+
+        // Calculate planet positions with houses relative to navamsa ascendant
+        val navamsaPositions = chart.planetPositions.map { position ->
+            calculateNavamsaPosition(position, navamsaAscendantSign.number)
+        }
 
         return DivisionalChartData(
             chartType = DivisionalChartType.D9_NAVAMSA,
@@ -41,14 +44,14 @@ object DivisionalChartCalculator {
         )
     }
 
-    private fun calculateNavamsaPosition(position: PlanetPosition): PlanetPosition {
+    private fun calculateNavamsaPosition(position: PlanetPosition, ascendantSignNumber: Int): PlanetPosition {
         val navamsaLongitude = calculateNavamsaLongitude(position.longitude)
         val navamsaSign = ZodiacSign.fromLongitude(navamsaLongitude)
         val degreeInSign = navamsaLongitude % 30.0
         val (nakshatra, pada) = Nakshatra.fromLongitude(navamsaLongitude)
 
-        // Calculate house based on navamsa position
-        val navamsaHouse = calculateHouseFromLongitude(navamsaLongitude, navamsaSign.number)
+        // Calculate house based on planet's navamsa sign relative to navamsa ascendant sign
+        val navamsaHouse = calculateHouseFromSign(navamsaSign.number, ascendantSignNumber)
 
         return position.copy(
             longitude = navamsaLongitude,
@@ -99,11 +102,14 @@ object DivisionalChartCalculator {
      * @return List of planet positions in Dasamsa chart
      */
     fun calculateDasamsa(chart: VedicChart): DivisionalChartData {
-        val dasamsaPositions = chart.planetPositions.map { position ->
-            calculateDasamsaPosition(position)
-        }
-
+        // First calculate the dasamsa ascendant
         val dasamsaAscendant = calculateDasamsaLongitude(chart.ascendant)
+        val dasamsaAscendantSign = ZodiacSign.fromLongitude(dasamsaAscendant)
+
+        // Calculate planet positions with houses relative to dasamsa ascendant
+        val dasamsaPositions = chart.planetPositions.map { position ->
+            calculateDasamsaPosition(position, dasamsaAscendantSign.number)
+        }
 
         return DivisionalChartData(
             chartType = DivisionalChartType.D10_DASAMSA,
@@ -113,13 +119,14 @@ object DivisionalChartCalculator {
         )
     }
 
-    private fun calculateDasamsaPosition(position: PlanetPosition): PlanetPosition {
+    private fun calculateDasamsaPosition(position: PlanetPosition, ascendantSignNumber: Int): PlanetPosition {
         val dasamsaLongitude = calculateDasamsaLongitude(position.longitude)
         val dasamsaSign = ZodiacSign.fromLongitude(dasamsaLongitude)
         val degreeInSign = dasamsaLongitude % 30.0
         val (nakshatra, pada) = Nakshatra.fromLongitude(dasamsaLongitude)
 
-        val dasamsaHouse = calculateHouseFromLongitude(dasamsaLongitude, dasamsaSign.number)
+        // Calculate house based on planet's dasamsa sign relative to dasamsa ascendant sign
+        val dasamsaHouse = calculateHouseFromSign(dasamsaSign.number, ascendantSignNumber)
 
         return position.copy(
             longitude = dasamsaLongitude,
@@ -171,11 +178,14 @@ object DivisionalChartCalculator {
      * @return List of planet positions in Shashtiamsa chart
      */
     fun calculateShashtiamsa(chart: VedicChart): DivisionalChartData {
-        val shashtiamsaPositions = chart.planetPositions.map { position ->
-            calculateShashtiamsaPosition(position)
-        }
-
+        // First calculate the shashtiamsa ascendant
         val shashtiamsaAscendant = calculateShashtiamsaLongitude(chart.ascendant)
+        val shashtiamsaAscendantSign = ZodiacSign.fromLongitude(shashtiamsaAscendant)
+
+        // Calculate planet positions with houses relative to shashtiamsa ascendant
+        val shashtiamsaPositions = chart.planetPositions.map { position ->
+            calculateShashtiamsaPosition(position, shashtiamsaAscendantSign.number)
+        }
 
         return DivisionalChartData(
             chartType = DivisionalChartType.D60_SHASHTIAMSA,
@@ -185,13 +195,14 @@ object DivisionalChartCalculator {
         )
     }
 
-    private fun calculateShashtiamsaPosition(position: PlanetPosition): PlanetPosition {
+    private fun calculateShashtiamsaPosition(position: PlanetPosition, ascendantSignNumber: Int): PlanetPosition {
         val shashtiamsaLongitude = calculateShashtiamsaLongitude(position.longitude)
         val shashtiamsaSign = ZodiacSign.fromLongitude(shashtiamsaLongitude)
         val degreeInSign = shashtiamsaLongitude % 30.0
         val (nakshatra, pada) = Nakshatra.fromLongitude(shashtiamsaLongitude)
 
-        val shashtiamsaHouse = calculateHouseFromLongitude(shashtiamsaLongitude, shashtiamsaSign.number)
+        // Calculate house based on planet's shashtiamsa sign relative to shashtiamsa ascendant sign
+        val shashtiamsaHouse = calculateHouseFromSign(shashtiamsaSign.number, ascendantSignNumber)
 
         return position.copy(
             longitude = shashtiamsaLongitude,
@@ -231,12 +242,18 @@ object DivisionalChartCalculator {
     }
 
     /**
-     * Simple house calculation based on sign position
-     * In divisional charts, house 1 contains the divisional ascendant sign
+     * Calculate house number based on the planet's sign relative to the ascendant sign.
+     * In Vedic astrology, house 1 is the sign where the ascendant falls.
+     * House numbers then increment through the zodiac.
+     *
+     * @param planetSignNumber The sign number (1-12) where the planet is placed
+     * @param ascendantSignNumber The sign number (1-12) of the divisional chart's ascendant
+     * @return House number (1-12)
      */
-    private fun calculateHouseFromLongitude(longitude: Double, ascendantSignNumber: Int): Int {
-        val signNumber = ZodiacSign.fromLongitude(longitude).number
-        val houseOffset = (signNumber - ascendantSignNumber + 12) % 12
+    private fun calculateHouseFromSign(planetSignNumber: Int, ascendantSignNumber: Int): Int {
+        // Both sign numbers are 1-based (1=Aries, 2=Taurus, etc.)
+        // House 1 = ascendant sign, House 2 = next sign, etc.
+        val houseOffset = (planetSignNumber - ascendantSignNumber + 12) % 12
         return if (houseOffset == 0) 1 else houseOffset + 1
     }
 
