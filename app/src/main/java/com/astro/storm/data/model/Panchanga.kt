@@ -199,7 +199,7 @@ data class Panchanga(
             appendLine()
             appendLine("3. NAKSHATRA (Lunar Mansion):")
             appendLine("   ${nakshatra.displayName}")
-            appendLine("   Ruler: ${nakshatra.rulerPlanet.displayName}")
+            appendLine("   Ruler: ${nakshatra.ruler.displayName}")
             appendLine("   Deity: ${nakshatra.deity}")
             if (nakshatraEndTime != null) {
                 appendLine("   Ends: ${nakshatraEndTime.toLocalTime()}")

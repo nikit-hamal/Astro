@@ -195,7 +195,7 @@ data class DashaSystem(
             appendLine()
             appendLine("Birth Date: ${birthDateTime.toLocalDate()}")
             appendLine("Birth Nakshatra: ${birthNakshatra.displayName}")
-            appendLine("Nakshatra Ruler: ${birthNakshatra.rulerPlanet.displayName}")
+            appendLine("Nakshatra Ruler: ${birthNakshatra.ruler.displayName}")
             appendLine()
 
             if (currentMahadasha != null) {
@@ -264,7 +264,7 @@ object DashaCalculatorHelper {
         val proportionCompleted = positionInNakshatra / nakshatraSpan
 
         // Get ruling planet's dasha years
-        val totalYears = VimshottariYears.getYearsForPlanet(nakshatra.rulerPlanet)
+        val totalYears = VimshottariYears.getYearsForPlanet(nakshatra.ruler)
 
         // Calculate balance (years remaining in starting dasha)
         return totalYears * (1.0 - proportionCompleted)
