@@ -33,8 +33,8 @@ class AspectCalculator {
     fun calculateAllAspects(
         planetPositions: List<PlanetPosition>,
         orbConfig: OrbConfiguration = defaultOrbConfig
-    ): List<Aspect> {
-        val aspects = mutableListOf<Aspect>()
+    ): List<PlanetaryAspect> {
+        val aspects = mutableListOf<PlanetaryAspect>()
 
         // Calculate aspects between all planet pairs
         for (i in planetPositions.indices) {
@@ -49,7 +49,7 @@ class AspectCalculator {
             }
         }
 
-        return aspects.sortedBy { it.orb }
+        return aspects.sortedBy { it.angularSeparation }
     }
 
     /**
@@ -59,7 +59,7 @@ class AspectCalculator {
         planet1: PlanetPosition,
         planet2: PlanetPosition,
         orbConfig: OrbConfiguration = defaultOrbConfig
-    ): Aspect? {
+    ): PlanetaryAspect? {
         // Calculate angular separation
         val separation = calculateAngularSeparation(planet1.longitude, planet2.longitude)
 
@@ -89,14 +89,16 @@ class AspectCalculator {
         return if (aspectType != null) {
             val exactAngle = getExactAngle(aspectType)
             val orb = abs(separation - exactAngle).coerceAtMost(abs((360.0 - separation) - exactAngle))
+            val orbStrength = 1.0 - (orb / maxOrb).coerceIn(0.0, 1.0)
 
-            Aspect(
+            PlanetaryAspect(
                 planet1 = planet1.planet,
                 planet2 = planet2.planet,
-                type = aspectType,
-                orb = orb,
-                separation = separation,
-                isApplying = isApplying(planet1, planet2)
+                aspectType = aspectType,
+                angularSeparation = separation,
+                orbStrength = orbStrength,
+                isApplying = isApplying(planet1, planet2),
+                effectiveStrength = aspectType.strength.multiplier * orbStrength
             )
         } else null
     }
@@ -142,6 +144,7 @@ class AspectCalculator {
             Planet.MERCURY -> config.beneficsOrb
             Planet.MARS, Planet.SATURN -> config.maleficsOrb
             Planet.RAHU, Planet.KETU -> config.nodesOrb
+            Planet.URANUS, Planet.NEPTUNE, Planet.PLUTO -> config.maleficsOrb
         }
     }
 
@@ -155,6 +158,10 @@ class AspectCalculator {
             AspectType.SQUARE -> 90.0
             AspectType.TRINE -> 120.0
             AspectType.OPPOSITION -> 180.0
+            AspectType.SEMISEXTILE -> 30.0
+            AspectType.QUINCUNX -> 150.0
+            AspectType.SEMISQUARE -> 45.0
+            AspectType.SESQUIQUADRATE -> 135.0
         }
     }
 
@@ -187,7 +194,7 @@ class AspectCalculator {
         planetPositions: List<PlanetPosition>,
         orbConfig: OrbConfiguration = defaultOrbConfig
     ): AspectMatrix {
-        val matrix = mutableMapOf<Pair<Planet, Planet>, Aspect?>()
+        val aspects = mutableListOf<PlanetaryAspect>()
 
         for (i in planetPositions.indices) {
             for (j in i + 1 until planetPositions.size) {
@@ -195,11 +202,16 @@ class AspectCalculator {
                 val planet2 = planetPositions[j]
 
                 val aspect = calculateAspect(planet1, planet2, orbConfig)
-                matrix[planet1.planet to planet2.planet] = aspect
+                if (aspect != null) {
+                    aspects.add(aspect)
+                }
             }
         }
 
-        return AspectMatrix(matrix)
+        return AspectMatrix(
+            aspects = aspects,
+            vedicAspects = emptyList()
+        )
     }
 
     /**
@@ -207,9 +219,9 @@ class AspectCalculator {
      */
     fun identifyYogas(
         planetPositions: List<PlanetPosition>,
-        aspects: List<Aspect>
-    ): List<Yoga> {
-        val yogas = mutableListOf<Yoga>()
+        aspects: List<PlanetaryAspect>
+    ): List<PlanetaryYoga> {
+        val yogas = mutableListOf<PlanetaryYoga>()
 
         // Raja Yoga: Jupiter and Venus in conjunction or mutual aspect
         val jupiterVenusAspect = aspects.find {
@@ -218,9 +230,9 @@ class AspectCalculator {
         }
         if (jupiterVenusAspect != null) {
             yogas.add(
-                Yoga(
+                PlanetaryYoga(
                     name = "Raja Yoga",
-                    description = "Jupiter and Venus in ${jupiterVenusAspect.type.displayName}",
+                    description = "Jupiter and Venus in ${jupiterVenusAspect.aspectType.displayName}",
                     type = YogaType.BENEFICIAL,
                     strength = calculateYogaStrength(jupiterVenusAspect),
                     planets = listOf(Planet.JUPITER, Planet.VENUS)
@@ -236,10 +248,10 @@ class AspectCalculator {
         }
         if (sunMoonAspect != null) {
             yogas.add(
-                Yoga(
+                PlanetaryYoga(
                     name = "Luminaries Yoga",
-                    description = "Sun and Moon in ${sunMoonAspect.type.displayName}",
-                    type = if (sunMoonAspect.type in listOf(AspectType.TRINE, AspectType.SEXTILE))
+                    description = "Sun and Moon in ${sunMoonAspect.aspectType.displayName}",
+                    type = if (sunMoonAspect.aspectType in listOf(AspectType.TRINE, AspectType.SEXTILE))
                         YogaType.BENEFICIAL else YogaType.MIXED,
                     strength = calculateYogaStrength(sunMoonAspect),
                     planets = listOf(Planet.SUN, Planet.MOON)
@@ -254,10 +266,10 @@ class AspectCalculator {
         }
         if (marsSaturnAspect != null) {
             yogas.add(
-                Yoga(
+                PlanetaryYoga(
                     name = "Mars-Saturn Yoga",
-                    description = "Mars and Saturn in ${marsSaturnAspect.type.displayName}",
-                    type = if (marsSaturnAspect.type == AspectType.TRINE)
+                    description = "Mars and Saturn in ${marsSaturnAspect.aspectType.displayName}",
+                    type = if (marsSaturnAspect.aspectType == AspectType.TRINE)
                         YogaType.MIXED else YogaType.CHALLENGING,
                     strength = calculateYogaStrength(marsSaturnAspect),
                     planets = listOf(Planet.MARS, Planet.SATURN)
@@ -269,11 +281,11 @@ class AspectCalculator {
         val sunMercuryAspect = aspects.find {
             ((it.planet1 == Planet.SUN && it.planet2 == Planet.MERCURY) ||
             (it.planet1 == Planet.MERCURY && it.planet2 == Planet.SUN)) &&
-            it.type == AspectType.CONJUNCTION
+            it.aspectType == AspectType.CONJUNCTION
         }
         if (sunMercuryAspect != null) {
             yogas.add(
-                Yoga(
+                PlanetaryYoga(
                     name = "Budha-Aditya Yoga",
                     description = "Sun and Mercury in conjunction (enhances intellect)",
                     type = YogaType.BENEFICIAL,
@@ -287,11 +299,11 @@ class AspectCalculator {
         val moonMarsAspect = aspects.find {
             ((it.planet1 == Planet.MOON && it.planet2 == Planet.MARS) ||
             (it.planet1 == Planet.MARS && it.planet2 == Planet.MOON)) &&
-            it.type == AspectType.CONJUNCTION
+            it.aspectType == AspectType.CONJUNCTION
         }
         if (moonMarsAspect != null) {
             yogas.add(
-                Yoga(
+                PlanetaryYoga(
                     name = "Chandra-Mangala Yoga",
                     description = "Moon and Mars in conjunction (wealth and property)",
                     type = YogaType.BENEFICIAL,
@@ -307,11 +319,9 @@ class AspectCalculator {
     /**
      * Calculate yoga strength based on aspect orb
      */
-    private fun calculateYogaStrength(aspect: Aspect): Double {
-        // Tighter orb = stronger yoga
-        // Maximum strength (100%) at 0° orb, decreasing to 0% at max orb
-        val maxOrb = 10.0
-        return ((maxOrb - aspect.orb) / maxOrb * 100.0).coerceIn(0.0, 100.0)
+    private fun calculateYogaStrength(aspect: PlanetaryAspect): Double {
+        // Use orbStrength and effectiveStrength from PlanetaryAspect
+        return (aspect.orbStrength * 100.0).coerceIn(0.0, 100.0)
     }
 
     /**
@@ -319,8 +329,8 @@ class AspectCalculator {
      */
     fun getAspectsForPlanet(
         planet: Planet,
-        aspects: List<Aspect>
-    ): List<Aspect> {
+        aspects: List<PlanetaryAspect>
+    ): List<PlanetaryAspect> {
         return aspects.filter { it.planet1 == planet || it.planet2 == planet }
     }
 
@@ -328,71 +338,17 @@ class AspectCalculator {
      * Get strongest aspects in chart
      */
     fun getStrongestAspects(
-        aspects: List<Aspect>,
+        aspects: List<PlanetaryAspect>,
         count: Int = 5
-    ): List<Aspect> {
-        return aspects.sortedBy { it.orb }.take(count)
+    ): List<PlanetaryAspect> {
+        return aspects.sortedByDescending { it.effectiveStrength }.take(count)
     }
 }
 
 /**
- * Aspect Matrix - stores aspects between all planet pairs
+ * Planetary Yoga (special planetary combination)
  */
-data class AspectMatrix(
-    private val matrix: Map<Pair<Planet, Planet>, Aspect?>
-) {
-    /**
-     * Get aspect between two planets
-     */
-    fun getAspect(planet1: Planet, planet2: Planet): Aspect? {
-        return matrix[planet1 to planet2] ?: matrix[planet2 to planet1]
-    }
-
-    /**
-     * Get all aspects
-     */
-    fun getAllAspects(): List<Aspect> {
-        return matrix.values.filterNotNull()
-    }
-
-    /**
-     * Get aspects by type
-     */
-    fun getAspectsByType(type: AspectType): List<Aspect> {
-        return matrix.values.filterNotNull().filter { it.type == type }
-    }
-
-    /**
-     * Format as string table
-     */
-    fun toFormattedString(): String {
-        return buildString {
-            appendLine("═══════════════════════════════════════")
-            appendLine("          ASPECT MATRIX")
-            appendLine("═══════════════════════════════════════")
-            appendLine()
-
-            val planets = Planet.MAIN_PLANETS
-            planets.forEachIndexed { i, planet1 ->
-                planets.drop(i + 1).forEach { planet2 ->
-                    val aspect = getAspect(planet1, planet2)
-                    if (aspect != null) {
-                        appendLine(
-                            "${planet1.symbol} ${aspect.type.symbol} ${planet2.symbol} " +
-                            "(orb: ${String.format("%.2f", aspect.orb)}°) " +
-                            if (aspect.isApplying) "[Applying]" else "[Separating]"
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Yoga (special planetary combination)
- */
-data class Yoga(
+data class PlanetaryYoga(
     val name: String,
     val description: String,
     val type: YogaType,

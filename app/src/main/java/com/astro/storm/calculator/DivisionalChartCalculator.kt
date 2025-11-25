@@ -17,15 +17,13 @@ class DivisionalChartCalculator {
         division: DivisionalChartType
     ): DivisionalChart {
         val divisionalPositions = vedicChart.planetPositions.map { position ->
-            calculateDivisionalPosition(position, division)
+            calculateDivisionalPosition(position, division, vedicChart)
         }
 
         return DivisionalChart(
-            baseChart = vedicChart,
-            type = division,
-            planetPositions = divisionalPositions,
+            chartType = division,
             ascendant = calculateDivisionalLongitude(vedicChart.ascendant, division),
-            calculationMethod = "Parashari"
+            planetPositions = divisionalPositions
         )
     }
 
@@ -34,24 +32,40 @@ class DivisionalChartCalculator {
      */
     private fun calculateDivisionalPosition(
         position: PlanetPosition,
-        division: DivisionalChartType
-    ): PlanetPosition {
+        division: DivisionalChartType,
+        vedicChart: VedicChart
+    ): DivisionalPlanetPosition {
         val divisionalLongitude = calculateDivisionalLongitude(position.longitude, division)
         val divisionalSign = ZodiacSign.fromLongitude(divisionalLongitude)
         val degreeInSign = divisionalLongitude % 30.0
 
         val (nakshatra, pada) = Nakshatra.fromLongitude(divisionalLongitude)
 
-        return position.copy(
+        // Calculate house for the divisional position
+        val divisionalAscendant = calculateDivisionalLongitude(vedicChart.ascendant, division)
+        val house = calculateHouse(divisionalLongitude, divisionalAscendant)
+
+        return DivisionalPlanetPosition(
+            planet = position.planet,
             longitude = divisionalLongitude,
             sign = divisionalSign,
-            degree = degreeInSign.toInt().toDouble(),
-            minutes = ((degreeInSign - degreeInSign.toInt()) * 60.0).toInt().toDouble(),
+            degree = degreeInSign.toInt(),
+            minutes = ((degreeInSign - degreeInSign.toInt()) * 60.0).toInt(),
             seconds = ((((degreeInSign - degreeInSign.toInt()) * 60.0) -
-                ((degreeInSign - degreeInSign.toInt()) * 60.0).toInt()) * 60.0),
+                ((degreeInSign - degreeInSign.toInt()) * 60.0).toInt()) * 60.0).toInt(),
+            house = house,
             nakshatra = nakshatra,
-            nakshatraPada = pada
+            nakshatraPada = pada,
+            isRetrograde = position.isRetrograde
         )
+    }
+
+    /**
+     * Calculate house number for a given longitude
+     */
+    private fun calculateHouse(longitude: Double, ascendant: Double): Int {
+        val diff = (longitude - ascendant + 360.0) % 360.0
+        return (diff / 30.0).toInt() + 1
     }
 
     /**
@@ -72,6 +86,7 @@ class DivisionalChartCalculator {
             DivisionalChartType.D9 -> calculateD9(signNumber, degreeInSign)
             DivisionalChartType.D10 -> calculateD10(signNumber, degreeInSign)
             DivisionalChartType.D60 -> calculateD60(signNumber, degreeInSign)
+            else -> normalizedLongitude // For other divisional charts, return as-is for now
         }
     }
 
@@ -181,7 +196,7 @@ class DivisionalChartCalculator {
             val position = chart.planetPositions.find { it.planet == planet }
             if (position != null) {
                 // Add strength based on sign placement
-                strength += when {
+                val signStrength = when {
                     isInOwnSign(planet, position.sign) -> 1.0
                     isInExaltation(planet, position.sign) -> 1.5
                     isInMoolatrikona(planet, position.sign) -> 0.75
@@ -190,13 +205,14 @@ class DivisionalChartCalculator {
                 }
 
                 // Weight by divisional chart importance
-                val weight = when (chart.type) {
+                val weight = when (chart.chartType) {
                     DivisionalChartType.D9 -> 1.5   // Navamsa is most important
                     DivisionalChartType.D10 -> 1.0
                     DivisionalChartType.D60 -> 1.2  // Very precise
+                    else -> 1.0
                 }
 
-                strength *= weight
+                strength += signStrength * weight
             }
         }
 
@@ -274,13 +290,13 @@ class DivisionalChartCalculator {
      * Analyze Navamsa (D9) chart specifically
      * D9 is the most important divisional chart
      */
-    fun analyzeNavamsa(d9Chart: DivisionalChart): NavamsaAnalysis {
+    fun analyzeNavamsa(d9Chart: DivisionalChart, d1Chart: VedicChart): NavamsaAnalysis {
         val vargottamaPositions = mutableListOf<Planet>()
         val puskaraNavamsaPositions = mutableListOf<Planet>()
 
         d9Chart.planetPositions.forEach { d9Position ->
             // Find corresponding position in base chart
-            val d1Position = d9Chart.baseChart.planetPositions.find {
+            val d1Position = d1Chart.planetPositions.find {
                 it.planet == d9Position.planet
             }
 
@@ -308,7 +324,7 @@ class DivisionalChartCalculator {
      * Check if position is in Pushkara Navamsa
      * Specific navamsas in Cancer and Capricorn that give special strength
      */
-    private fun isPushkaraNavamsa(position: PlanetPosition): Boolean {
+    private fun isPushkaraNavamsa(position: DivisionalPlanetPosition): Boolean {
         val sign = position.sign
         val degreeInSign = position.longitude % 30.0
         val navamsaNumber = floor(degreeInSign / 3.333333).toInt()

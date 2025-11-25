@@ -58,7 +58,7 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         val (nakshatra, _) = Nakshatra.fromLongitude(moonLongitude)
         val nakshatraEndTime = calculateNakshatraEndTime(julianDay, moonLongitude, timezone)
 
-        val yoga = Yoga.calculate(sunLongitude, moonLongitude)
+        val yoga = calculateYoga(sunLongitude, moonLongitude)
         val yogaEndTime = calculateYogaEndTime(julianDay, sunLongitude, moonLongitude, timezone)
 
         val karana = calculateKarana(sunLongitude, moonLongitude)
@@ -104,6 +104,13 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         val elongation = (moonLongitude - sunLongitude + 360.0) % 360.0
         val tithiNumber = floor(elongation / TITHI_ARC).toInt() + 1
         return Tithi.fromLunarDayNumber(tithiNumber.coerceIn(1, 30))
+    }
+
+    /**
+     * Calculate Yoga from Sun and Moon longitudes
+     */
+    private fun calculateYoga(sunLongitude: Double, moonLongitude: Double): Yoga {
+        return Yoga.calculate(sunLongitude, moonLongitude)
     }
 
     /**
@@ -253,13 +260,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = DoubleArray(3).apply {
-            this[0] = longitude
-            this[1] = latitude
-            this[2] = 0.0
-        }
-
-        val tret = DoubleArray(2)
+        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val tret = doubleArrayOf(0.0, 0.0)
         val serr = StringBuffer()
 
         swissEph.swe_rise_trans(
@@ -287,13 +289,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         longitude: Double,
         timezone: String
     ): LocalDateTime {
-        val geopos = DoubleArray(3).apply {
-            this[0] = longitude
-            this[1] = latitude
-            this[2] = 0.0
-        }
-
-        val tret = DoubleArray(2)
+        val geopos = doubleArrayOf(longitude, latitude, 0.0)
+        val tret = doubleArrayOf(0.0, 0.0)
         val serr = StringBuffer()
 
         swissEph.swe_rise_trans(
@@ -322,13 +319,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = DoubleArray(3).apply {
-                this[0] = longitude
-                this[1] = latitude
-                this[2] = 0.0
-            }
-
-            val tret = DoubleArray(2)
+            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val tret = doubleArrayOf(0.0, 0.0)
             val serr = StringBuffer()
 
             val result = swissEph.swe_rise_trans(
@@ -360,13 +352,8 @@ class PanchangaCalculator(private val swissEph: SwissEph) {
         timezone: String
     ): LocalDateTime? {
         return try {
-            val geopos = DoubleArray(3).apply {
-                this[0] = longitude
-                this[1] = latitude
-                this[2] = 0.0
-            }
-
-            val tret = DoubleArray(2)
+            val geopos = doubleArrayOf(longitude, latitude, 0.0)
+            val tret = doubleArrayOf(0.0, 0.0)
             val serr = StringBuffer()
 
             val result = swissEph.swe_rise_trans(
