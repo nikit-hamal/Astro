@@ -11,6 +11,7 @@ on:
       - 'gradle.properties'
       - 'gradlew'
       - 'gradlew.bat'
+      - 'keystore/**'
     branches-ignore:
       - 'wip/**'
   workflow_dispatch:
@@ -33,9 +34,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Generate Keystore
+      - name: Setup Keystore
         run: |
           mkdir -p keystore
+          # Generate keystore if it doesn't exist in repository
           if [ ! -f keystore/release.jks ]; then
             keytool -genkeypair -v \
               -keystore keystore/release.jks \
@@ -51,9 +53,6 @@ jobs:
       - name: Download Swiss Ephemeris Library
         run: |
           mkdir -p app/libs
-          # Download Swiss Ephemeris Java library
-          # Note: You need to add the actual swisseph JAR to app/libs manually
-          # or download from a Maven repository
           wget -q http://www.th-mack.de/download/swisseph-2.00.00-01.jar -O app/libs/swisseph-2.10.03.jar || echo "Swiss Ephemeris download failed, will use bundled version"
 
       - name: Make gradlew executable
@@ -76,11 +75,4 @@ jobs:
         with:
           name: apk-release-${{ steps.set_sha.outputs.short_sha }}
           path: app/build/outputs/apk/release/astrostorm-release-${{ steps.set_sha.outputs.short_sha }}.apk
-          retention-days: 90
-
-      - name: Upload Keystore (for reference)
-        uses: actions/upload-artifact@v4
-        with:
-          name: keystore
-          path: keystore/release.jks
           retention-days: 90
