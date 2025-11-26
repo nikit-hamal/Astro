@@ -286,7 +286,8 @@ private fun ChartBottomNavigation(
     NavigationBar(
         containerColor = SurfaceColor,
         contentColor = TextPrimary,
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        modifier = Modifier.height(64.dp)
     ) {
         ChartTab.entries.forEach { tab ->
             NavigationBarItem(
@@ -294,23 +295,15 @@ private fun ChartBottomNavigation(
                     Icon(
                         tab.icon,
                         contentDescription = tab.title,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(if (selectedTab == tab) 26.dp else 24.dp)
                     )
                 },
-                label = {
-                    Text(
-                        text = tab.title,
-                        fontSize = 11.sp,
-                        maxLines = 1
-                    )
-                },
+                label = null, // Icons only - no text labels
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = AccentGold,
-                    selectedTextColor = AccentGold,
                     unselectedIconColor = TextMuted,
-                    unselectedTextColor = TextMuted,
                     indicatorColor = AccentGold.copy(alpha = 0.15f)
                 )
             )
@@ -331,6 +324,48 @@ private fun ChartTabContent(
     }
 
     var selectedChartType by remember { mutableStateOf("D1") }
+
+    // Get current chart data based on selection
+    val currentChartData = remember(selectedChartType, divisionalCharts) {
+        when (selectedChartType) {
+            "D1" -> null // Lagna chart uses the main chart data
+            "D2" -> divisionalCharts.find { it.chartType == DivisionalChartType.D2_HORA }
+            "D3" -> divisionalCharts.find { it.chartType == DivisionalChartType.D3_DREKKANA }
+            "D4" -> divisionalCharts.find { it.chartType == DivisionalChartType.D4_CHATURTHAMSA }
+            "D7" -> divisionalCharts.find { it.chartType == DivisionalChartType.D7_SAPTAMSA }
+            "D9" -> divisionalCharts.find { it.chartType == DivisionalChartType.D9_NAVAMSA }
+            "D10" -> divisionalCharts.find { it.chartType == DivisionalChartType.D10_DASAMSA }
+            "D12" -> divisionalCharts.find { it.chartType == DivisionalChartType.D12_DWADASAMSA }
+            "D16" -> divisionalCharts.find { it.chartType == DivisionalChartType.D16_SHODASAMSA }
+            "D20" -> divisionalCharts.find { it.chartType == DivisionalChartType.D20_VIMSAMSA }
+            "D24" -> divisionalCharts.find { it.chartType == DivisionalChartType.D24_CHATURVIMSAMSA }
+            "D27" -> divisionalCharts.find { it.chartType == DivisionalChartType.D27_SAPTAVIMSAMSA }
+            "D30" -> divisionalCharts.find { it.chartType == DivisionalChartType.D30_TRIMSAMSA }
+            "D60" -> divisionalCharts.find { it.chartType == DivisionalChartType.D60_SHASHTIAMSA }
+            else -> null
+        }
+    }
+
+    // Get chart title and description
+    val chartInfo = remember(selectedChartType) {
+        when (selectedChartType) {
+            "D1" -> Triple("Lagna Chart (Rashi)", "Physical Body, General Life", "D1")
+            "D2" -> Triple("Hora Chart", "Wealth, Prosperity", "D2")
+            "D3" -> Triple("Drekkana Chart", "Siblings, Courage, Vitality", "D3")
+            "D4" -> Triple("Chaturthamsa Chart", "Fortune, Property", "D4")
+            "D7" -> Triple("Saptamsa Chart", "Children, Progeny", "D7")
+            "D9" -> Triple("Navamsa Chart", "Marriage, Dharma, Fortune", "D9")
+            "D10" -> Triple("Dasamsa Chart", "Career, Profession", "D10")
+            "D12" -> Triple("Dwadasamsa Chart", "Parents, Ancestry", "D12")
+            "D16" -> Triple("Shodasamsa Chart", "Vehicles, Pleasures", "D16")
+            "D20" -> Triple("Vimsamsa Chart", "Spiritual Life", "D20")
+            "D24" -> Triple("Siddhamsa Chart", "Education, Learning", "D24")
+            "D27" -> Triple("Bhamsa Chart", "Strength, Weakness", "D27")
+            "D30" -> Triple("Trimsamsa Chart", "Evils, Misfortunes", "D30")
+            "D60" -> Triple("Shashtiamsa Chart", "Past Life Karma", "D60")
+            else -> Triple("Chart", "", selectedChartType)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -355,76 +390,86 @@ private fun ChartTabContent(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(
-                        text = when (selectedChartType) {
-                            "D1" -> "Lagna Chart (Rashi)"
-                            "D9" -> "Navamsa (D9)"
-                            "D10" -> "Dasamsa (D10)"
-                            "D60" -> "Shashtiamsa (D60)"
-                            else -> "Chart"
-                        },
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AccentGold,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                    // Chart title with description
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = chartInfo.first,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AccentGold
+                            )
+                            if (chartInfo.second.isNotEmpty()) {
+                                Text(
+                                    text = chartInfo.second,
+                                    fontSize = 12.sp,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = AccentGold.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = chartInfo.third,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentGold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
 
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Chart canvas
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(ChartBackground)
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            when (selectedChartType) {
-                                "D1" -> chartRenderer.drawNorthIndianChart(
+                            if (selectedChartType == "D1") {
+                                chartRenderer.drawNorthIndianChart(
                                     drawScope = this,
                                     chart = chart,
                                     size = size.minDimension,
                                     chartTitle = "Lagna"
                                 )
-                                "D9" -> {
-                                    val d9 = divisionalCharts.find { it.chartType == DivisionalChartType.D9_NAVAMSA }
-                                    d9?.let {
-                                        chartRenderer.drawDivisionalChart(
-                                            drawScope = this,
-                                            planetPositions = it.planetPositions,
-                                            ascendantLongitude = it.ascendantLongitude,
-                                            size = size.minDimension,
-                                            chartTitle = "D9"
-                                        )
-                                    }
-                                }
-                                "D10" -> {
-                                    val d10 = divisionalCharts.find { it.chartType == DivisionalChartType.D10_DASAMSA }
-                                    d10?.let {
-                                        chartRenderer.drawDivisionalChart(
-                                            drawScope = this,
-                                            planetPositions = it.planetPositions,
-                                            ascendantLongitude = it.ascendantLongitude,
-                                            size = size.minDimension,
-                                            chartTitle = "D10"
-                                        )
-                                    }
-                                }
-                                "D60" -> {
-                                    val d60 = divisionalCharts.find { it.chartType == DivisionalChartType.D60_SHASHTIAMSA }
-                                    d60?.let {
-                                        chartRenderer.drawDivisionalChart(
-                                            drawScope = this,
-                                            planetPositions = it.planetPositions,
-                                            ascendantLongitude = it.ascendantLongitude,
-                                            size = size.minDimension,
-                                            chartTitle = "D60"
-                                        )
-                                    }
+                            } else {
+                                currentChartData?.let {
+                                    chartRenderer.drawDivisionalChart(
+                                        drawScope = this,
+                                        planetPositions = it.planetPositions,
+                                        ascendantLongitude = it.ascendantLongitude,
+                                        size = size.minDimension,
+                                        chartTitle = chartInfo.third
+                                    )
                                 }
                             }
                         }
                     }
+
+                    // Legend for status indicators
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ChartLegend()
                 }
             }
+        }
+
+        // Chart Details - Planetary positions for selected chart
+        item {
+            ChartDetailsCard(
+                chart = chart,
+                currentChartData = currentChartData,
+                selectedChartType = selectedChartType
+            )
         }
 
         // Birth information
@@ -440,14 +485,225 @@ private fun ChartTabContent(
 }
 
 @Composable
+private fun ChartLegend() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0xFF1A1512),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        LegendItem("*", "Retrograde")
+        LegendItem("\u2191", "Exalted")
+        LegendItem("\u2193", "Debilitated")
+    }
+}
+
+@Composable
+private fun LegendItem(symbol: String, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = symbol,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = AccentGold
+        )
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = TextMuted
+        )
+    }
+}
+
+@Composable
+private fun ChartDetailsCard(
+    chart: VedicChart,
+    currentChartData: DivisionalChartData?,
+    selectedChartType: String
+) {
+    val planetPositions = if (selectedChartType == "D1") {
+        chart.planetPositions
+    } else {
+        currentChartData?.planetPositions ?: emptyList()
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Star,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Planetary Positions",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            // Ascendant info
+            if (selectedChartType == "D1") {
+                val ascSign = com.astro.storm.data.model.ZodiacSign.fromLongitude(chart.ascendant)
+                val ascDegree = chart.ascendant % 30.0
+                PlanetPositionRow(
+                    name = "Ascendant",
+                    sign = ascSign.displayName,
+                    degree = "${ascDegree.toInt()}°",
+                    house = "1",
+                    isRetrograde = false,
+                    color = AccentGold
+                )
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
+            } else {
+                currentChartData?.let { data ->
+                    val ascSign = com.astro.storm.data.model.ZodiacSign.fromLongitude(data.ascendantLongitude)
+                    val ascDegree = data.ascendantLongitude % 30.0
+                    PlanetPositionRow(
+                        name = "Ascendant",
+                        sign = ascSign.displayName,
+                        degree = "${ascDegree.toInt()}°",
+                        house = "1",
+                        isRetrograde = false,
+                        color = AccentGold
+                    )
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+
+            // Planet positions
+            planetPositions.forEach { position ->
+                PlanetPositionRow(
+                    name = position.planet.displayName,
+                    sign = position.sign.displayName,
+                    degree = "${(position.longitude % 30.0).toInt()}°",
+                    house = position.house.toString(),
+                    isRetrograde = position.isRetrograde,
+                    color = when (position.planet) {
+                        com.astro.storm.data.model.Planet.SUN -> Color(0xFFD2691E)
+                        com.astro.storm.data.model.Planet.MOON -> Color(0xFFDC143C)
+                        com.astro.storm.data.model.Planet.MARS -> Color(0xFFDC143C)
+                        com.astro.storm.data.model.Planet.MERCURY -> Color(0xFF228B22)
+                        com.astro.storm.data.model.Planet.JUPITER -> Color(0xFFDAA520)
+                        com.astro.storm.data.model.Planet.VENUS -> Color(0xFF9370DB)
+                        com.astro.storm.data.model.Planet.SATURN -> Color(0xFF4169E1)
+                        com.astro.storm.data.model.Planet.RAHU -> Color(0xFF8B0000)
+                        com.astro.storm.data.model.Planet.KETU -> Color(0xFF8B0000)
+                        else -> TextPrimary
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanetPositionRow(
+    name: String,
+    sign: String,
+    degree: String,
+    house: String,
+    isRetrograde: Boolean,
+    color: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = name,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = color,
+                modifier = Modifier.width(70.dp)
+            )
+            if (isRetrograde) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = WarningColor.copy(alpha = 0.2f),
+                    modifier = Modifier.padding(start = 4.dp)
+                ) {
+                    Text(
+                        text = "R",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = WarningColor,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = sign,
+            fontSize = 13.sp,
+            color = AccentTeal,
+            modifier = Modifier.width(80.dp),
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = degree,
+            fontSize = 13.sp,
+            color = TextSecondary,
+            modifier = Modifier.width(40.dp),
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = "H$house",
+            fontSize = 12.sp,
+            color = TextMuted,
+            modifier = Modifier.width(30.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
 private fun ChartTypeSelector(
     selectedType: String,
     onTypeSelected: (String) -> Unit
 ) {
+    // All available divisional charts
     val chartTypes = listOf(
         "D1" to "Lagna",
+        "D2" to "Hora",
+        "D3" to "Drekkana",
+        "D4" to "D4",
+        "D7" to "Saptamsa",
         "D9" to "Navamsa",
         "D10" to "Dasamsa",
+        "D12" to "D12",
+        "D16" to "D16",
+        "D20" to "D20",
+        "D24" to "D24",
+        "D27" to "Bhamsa",
+        "D30" to "D30",
         "D60" to "D60"
     )
 
@@ -461,7 +717,7 @@ private fun ChartTypeSelector(
                 label = {
                     Text(
                         text = name,
-                        fontSize = 13.sp
+                        fontSize = 12.sp
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
