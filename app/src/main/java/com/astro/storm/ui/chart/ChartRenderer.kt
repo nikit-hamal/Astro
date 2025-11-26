@@ -196,6 +196,71 @@ class ChartRenderer {
     }
 
     /**
+     * Check if planet is combust (too close to Sun)
+     * Combustion occurs when planet is within specific degrees from Sun
+     */
+    private fun isCombust(
+        planet: Planet,
+        planetLongitude: Double,
+        sunLongitude: Double,
+        isRetrograde: Boolean
+    ): Boolean {
+        // Sun, Moon, Rahu, Ketu, and outer planets don't combust
+        if (planet in listOf(Planet.SUN, Planet.MOON, Planet.RAHU, Planet.KETU,
+                             Planet.URANUS, Planet.NEPTUNE, Planet.PLUTO)) {
+            return false
+        }
+
+        // Calculate angular distance from Sun
+        val diff = kotlin.math.abs(planetLongitude - sunLongitude)
+        val angularDistance = if (diff > 180.0) 360.0 - diff else diff
+
+        // Check if within 17 arcminutes (0.283°) - this is Cazimi, not combust
+        if (angularDistance <= 0.283) {
+            return false // Cazimi - heart of Sun - actually strengthening
+        }
+
+        // Combustion orbs for each planet
+        val combustionOrb = when (planet) {
+            Planet.MERCURY -> if (isRetrograde) 12.0 else 14.0
+            Planet.VENUS -> if (isRetrograde) 8.0 else 10.0
+            Planet.MARS -> 17.0
+            Planet.JUPITER -> 11.0
+            Planet.SATURN -> 15.0
+            else -> return false
+        }
+
+        return angularDistance <= combustionOrb
+    }
+
+    /**
+     * Check if planet is Vargottama (same sign in both D1 and D9 charts)
+     * For now, we'll use a simplified check based on specific degree ranges
+     * True Vargottama requires D9 calculation
+     */
+    private fun isVargottama(planet: Planet, sign: ZodiacSign, degreeInSign: Double): Boolean {
+        // Vargottama occurs when planet occupies the same sign in D1 (Rashi) and D9 (Navamsa)
+        // This happens when planet is in specific degree ranges:
+        // - 0° to 3°20' for moveable signs (Aries, Cancer, Libra, Capricorn)
+        // - 10° to 13°20' for fixed signs (Taurus, Leo, Scorpio, Aquarius)
+        // - 20° to 23°20' for dual signs (Gemini, Virgo, Sagittarius, Pisces)
+
+        val isMoveable = sign in listOf(ZodiacSign.ARIES, ZodiacSign.CANCER,
+                                        ZodiacSign.LIBRA, ZodiacSign.CAPRICORN)
+        val isFixed = sign in listOf(ZodiacSign.TAURUS, ZodiacSign.LEO,
+                                     ZodiacSign.SCORPIO, ZodiacSign.AQUARIUS)
+        val isDual = sign in listOf(ZodiacSign.GEMINI, ZodiacSign.VIRGO,
+                                   ZodiacSign.SAGITTARIUS, ZodiacSign.PISCES)
+
+        return when {
+            isMoveable && degreeInSign >= 0.0 && degreeInSign <= 3.333 -> true
+            isFixed && degreeInSign >= 10.0 && degreeInSign <= 13.333 -> true
+            isDual && degreeInSign >= 20.0 && degreeInSign <= 23.333 -> true
+            else -> false
+        }
+    }
+
+    /**
      * Draw a professional North Indian style Vedic chart
      * Matches the layout and style of traditional Vedic astrology software
      */
@@ -258,6 +323,9 @@ class ChartRenderer {
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, chart.planetPositions, size
             )
+
+            // Draw symbol legend at the bottom
+            drawSymbolLegend(size)
         }
     }
 
@@ -324,6 +392,119 @@ class ChartRenderer {
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, planetPositions, size
             )
+
+            // Draw symbol legend at the bottom
+            drawSymbolLegend(size)
+        }
+    }
+
+    /**
+     * Draw symbol legend showing planetary status indicators (matching AstroSage style)
+     */
+    private fun DrawScope.drawSymbolLegend(size: Float) {
+        val legendTop = size * 0.82f // Position legend near bottom
+        val legendLeft = size * 0.05f
+        val legendTextSize = size * 0.028f
+        val lineHeight = size * 0.035f
+
+        // Background for legend
+        drawRect(
+            color = Color(0xFFE8D4B8), // Slightly darker parchment for contrast
+            topLeft = Offset(legendLeft, legendTop),
+            size = Size(size * 0.9f, lineHeight * 3f),
+            style = androidx.compose.ui.graphics.drawscope.Fill
+        )
+
+        // Border for legend
+        drawRect(
+            color = BORDER_COLOR,
+            topLeft = Offset(legendLeft, legendTop),
+            size = Size(size * 0.9f, lineHeight * 3f),
+            style = Stroke(width = 1.5f)
+        )
+
+        // First row of legend items
+        var xOffset = legendLeft + size * 0.02f
+        val y1 = legendTop + lineHeight * 0.7f
+
+        // * Retrograde
+        drawTextLeftAlign(
+            text = "* Retrograde",
+            position = Offset(xOffset, y1),
+            textSize = legendTextSize,
+            color = Color(0xFF2C2C2C),
+            isBold = false
+        )
+        xOffset += size * 0.20f
+
+        // ^ Combust
+        drawTextLeftAlign(
+            text = "^ Combust",
+            position = Offset(xOffset, y1),
+            textSize = legendTextSize,
+            color = Color(0xFF2C2C2C),
+            isBold = false
+        )
+        xOffset += size * 0.20f
+
+        // ¤ Vargottama
+        drawTextLeftAlign(
+            text = "\u00A4 Vargottama",
+            position = Offset(xOffset, y1),
+            textSize = legendTextSize,
+            color = Color(0xFF2C2C2C),
+            isBold = false
+        )
+
+        // Second row of legend items
+        xOffset = legendLeft + size * 0.02f
+        val y2 = legendTop + lineHeight * 1.7f
+
+        // ↑ Exalted
+        drawTextLeftAlign(
+            text = "\u2191 Exalted",
+            position = Offset(xOffset, y2),
+            textSize = legendTextSize,
+            color = Color(0xFF2C2C2C),
+            isBold = false
+        )
+        xOffset += size * 0.20f
+
+        // ↓ Debilitated
+        drawTextLeftAlign(
+            text = "\u2193 Debilitated",
+            position = Offset(xOffset, y2),
+            textSize = legendTextSize,
+            color = Color(0xFF2C2C2C),
+            isBold = false
+        )
+    }
+
+    /**
+     * Draw left-aligned text using native canvas
+     */
+    private fun DrawScope.drawTextLeftAlign(
+        text: String,
+        position: Offset,
+        textSize: Float,
+        color: Color,
+        isBold: Boolean = false
+    ) {
+        drawContext.canvas.nativeCanvas.apply {
+            val paint = android.graphics.Paint().apply {
+                this.color = color.toArgb()
+                this.textSize = textSize
+                this.textAlign = android.graphics.Paint.Align.LEFT
+                this.typeface = Typeface.create(
+                    Typeface.SANS_SERIF,
+                    if (isBold) Typeface.BOLD else Typeface.NORMAL
+                )
+                this.isAntiAlias = true
+                this.isSubpixelText = true
+            }
+            val textHeight = paint.descent() - paint.ascent()
+            val textOffset = textHeight / 2 - paint.descent()
+            drawText(text, position.x, position.y + textOffset, paint)
         }
     }
 
@@ -375,6 +556,9 @@ class ChartRenderer {
         // Group planets by house
         val planetsByHouse = planetPositions.groupBy { it.house }
 
+        // Get Sun position for combustion calculations
+        val sunPosition = planetPositions.find { it.planet == Planet.SUN }
+
         // Draw each house (1-12)
         for (houseNum in 1..12) {
             val houseCenter = getHousePlanetCenter(houseNum, left, top, chartSize, centerX, centerY)
@@ -392,7 +576,7 @@ class ChartRenderer {
             // Draw planets in this house
             val planets = planetsByHouse[houseNum] ?: emptyList()
             if (planets.isNotEmpty()) {
-                drawPlanetsInHouse(planets, houseCenter, size, houseNum)
+                drawPlanetsInHouse(planets, houseCenter, size, houseNum, sunPosition)
             }
         }
     }
@@ -401,7 +585,7 @@ class ChartRenderer {
      * Get the center position for placing planets in each house
      * This determines where planet text appears within each house section
      *
-     * North Indian chart layout:
+     * North Indian chart layout (matching AstroSage style):
      * - House 1: Top center diamond (Lagna)
      * - House 2: Top right triangle
      * - House 3: Right side upper
@@ -425,54 +609,56 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
+
         // Divide chart into sixths for precise positioning
         val sixthW = chartSize / 6
         val sixthH = chartSize / 6
 
+        // Calculate geometric centers of each house based on actual diamond structure
         return when (houseNum) {
-            // House 1: Top center diamond (Lagna/Ascendant) - upper part of central diamond
-            1 -> Offset(centerX, top + sixthH * 1.5f)
+            // House 1: Top center diamond - center of upper diamond section
+            1 -> Offset(centerX, top + sixthH * 1.8f)
 
-            // House 2: Top right corner triangle
-            2 -> Offset(right - sixthW * 1.2f, top + sixthH * 1.2f)
+            // House 2: Top right corner triangle - balanced center
+            2 -> Offset(right - sixthW * 1.0f, top + sixthH * 1.0f)
 
-            // House 3: Right side upper trapezoid
-            3 -> Offset(right - sixthW, centerY - sixthH * 0.8f)
+            // House 3: Right side upper trapezoid - center of upper right section
+            3 -> Offset(right - sixthW * 0.8f, centerY - sixthH * 1.0f)
 
-            // House 4: Right side lower trapezoid
-            4 -> Offset(right - sixthW, centerY + sixthH * 0.8f)
+            // House 4: Right side lower trapezoid - center of lower right section
+            4 -> Offset(right - sixthW * 0.8f, centerY + sixthH * 1.0f)
 
-            // House 5: Bottom right corner triangle
-            5 -> Offset(right - sixthW * 1.2f, bottom - sixthH * 1.2f)
+            // House 5: Bottom right corner triangle - balanced center
+            5 -> Offset(right - sixthW * 1.0f, bottom - sixthH * 1.0f)
 
-            // House 6: Bottom center right - lower right part of bottom
-            6 -> Offset(centerX + sixthW * 0.8f, bottom - sixthH * 1.5f)
+            // House 6: Bottom center right - center of lower right section
+            6 -> Offset(centerX + sixthW * 1.2f, bottom - sixthH * 1.8f)
 
-            // House 7: Bottom center diamond (opposite to Lagna) - lower part of central diamond
-            7 -> Offset(centerX, bottom - sixthH * 1.5f)
+            // House 7: Bottom center diamond - center of lower diamond section
+            7 -> Offset(centerX, bottom - sixthH * 1.8f)
 
-            // House 8: Bottom center left - lower left part of bottom
-            8 -> Offset(centerX - sixthW * 0.8f, bottom - sixthH * 1.5f)
+            // House 8: Bottom center left - center of lower left section
+            8 -> Offset(centerX - sixthW * 1.2f, bottom - sixthH * 1.8f)
 
-            // House 9: Bottom left corner triangle
-            9 -> Offset(left + sixthW * 1.2f, bottom - sixthH * 1.2f)
+            // House 9: Bottom left corner triangle - balanced center
+            9 -> Offset(left + sixthW * 1.0f, bottom - sixthH * 1.0f)
 
-            // House 10: Left side lower trapezoid
-            10 -> Offset(left + sixthW, centerY + sixthH * 0.8f)
+            // House 10: Left side lower trapezoid - center of lower left section
+            10 -> Offset(left + sixthW * 0.8f, centerY + sixthH * 1.0f)
 
-            // House 11: Left side upper trapezoid
-            11 -> Offset(left + sixthW, centerY - sixthH * 0.8f)
+            // House 11: Left side upper trapezoid - center of upper left section
+            11 -> Offset(left + sixthW * 0.8f, centerY - sixthH * 1.0f)
 
-            // House 12: Top left corner triangle
-            12 -> Offset(left + sixthW * 1.2f, top + sixthH * 1.2f)
+            // House 12: Top left corner triangle - balanced center
+            12 -> Offset(left + sixthW * 1.0f, top + sixthH * 1.0f)
 
             else -> Offset(centerX, centerY)
         }
     }
 
     /**
-     * Get position for house number (placed near the edge/corner of each house section)
-     * Numbers are placed at the outer edges of each house for clarity
+     * Get position for house number - placed at optimal positions within each house
+     * Following AstroSage style: house numbers are positioned clearly within house boundaries
      */
     private fun getHouseNumberPosition(
         houseNum: Int,
@@ -484,46 +670,53 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        val offset = chartSize * 0.05f
-        val eighthW = chartSize / 8
-        val eighthH = chartSize / 8
+
+        // Calculate key points for diamond structure
+        val midTop = Offset(centerX, top)
+        val midRight = Offset(right, centerY)
+        val midBottom = Offset(centerX, bottom)
+        val midLeft = Offset(left, centerY)
+
+        // More aggressive positioning - closer to house centers but away from planet areas
+        val sixthW = chartSize / 6
+        val sixthH = chartSize / 6
 
         return when (houseNum) {
-            // House 1: Top center - place number at top edge
-            1 -> Offset(centerX, top + offset * 1.5f)
+            // House 1: Top center diamond - place at very top of diamond
+            1 -> Offset(centerX, top + sixthH * 0.7f)
 
-            // House 2: Top right corner - place at corner area
-            2 -> Offset(right - offset * 1.5f, top + offset * 1.5f)
+            // House 2: Top right corner - place near top-right corner
+            2 -> Offset(right - sixthW * 0.6f, top + sixthH * 0.6f)
 
-            // House 3: Right side upper - place at right edge
-            3 -> Offset(right - offset, centerY - eighthH * 1.5f)
+            // House 3: Right side upper - place near right edge upper section
+            3 -> Offset(right - sixthW * 0.5f, centerY - sixthH * 1.3f)
 
-            // House 4: Right side lower - place at right edge
-            4 -> Offset(right - offset, centerY + eighthH * 1.5f)
+            // House 4: Right side lower - place near right edge lower section
+            4 -> Offset(right - sixthW * 0.5f, centerY + sixthH * 1.3f)
 
-            // House 5: Bottom right corner - place at corner area
-            5 -> Offset(right - offset * 1.5f, bottom - offset * 1.5f)
+            // House 5: Bottom right corner - place near bottom-right corner
+            5 -> Offset(right - sixthW * 0.6f, bottom - sixthH * 0.6f)
 
-            // House 6: Bottom center right - place at bottom edge
-            6 -> Offset(centerX + eighthW * 1.5f, bottom - offset * 1.5f)
+            // House 6: Bottom center right - place at bottom-center-right
+            6 -> Offset(centerX + sixthW * 1.1f, bottom - sixthH * 0.7f)
 
-            // House 7: Bottom center - place number at bottom edge
-            7 -> Offset(centerX, bottom - offset * 1.5f)
+            // House 7: Bottom center diamond - place at very bottom of diamond
+            7 -> Offset(centerX, bottom - sixthH * 0.7f)
 
-            // House 8: Bottom center left - place at bottom edge
-            8 -> Offset(centerX - eighthW * 1.5f, bottom - offset * 1.5f)
+            // House 8: Bottom center left - place at bottom-center-left
+            8 -> Offset(centerX - sixthW * 1.1f, bottom - sixthH * 0.7f)
 
-            // House 9: Bottom left corner - place at corner area
-            9 -> Offset(left + offset * 1.5f, bottom - offset * 1.5f)
+            // House 9: Bottom left corner - place near bottom-left corner
+            9 -> Offset(left + sixthW * 0.6f, bottom - sixthH * 0.6f)
 
-            // House 10: Left side lower - place at left edge
-            10 -> Offset(left + offset, centerY + eighthH * 1.5f)
+            // House 10: Left side lower - place near left edge lower section
+            10 -> Offset(left + sixthW * 0.5f, centerY + sixthH * 1.3f)
 
-            // House 11: Left side upper - place at left edge
-            11 -> Offset(left + offset, centerY - eighthH * 1.5f)
+            // House 11: Left side upper - place near left edge upper section
+            11 -> Offset(left + sixthW * 0.5f, centerY - sixthH * 1.3f)
 
-            // House 12: Top left corner - place at corner area
-            12 -> Offset(left + offset * 1.5f, top + offset * 1.5f)
+            // House 12: Top left corner - place near top-left corner
+            12 -> Offset(left + sixthW * 0.6f, top + sixthH * 0.6f)
 
             else -> Offset(centerX, centerY)
         }
@@ -537,7 +730,8 @@ class ChartRenderer {
         planets: List<PlanetPosition>,
         houseCenter: Offset,
         size: Float,
-        houseNum: Int
+        houseNum: Int,
+        sunPosition: PlanetPosition?
     ) {
         val textSize = size * 0.032f
         val lineHeight = size * 0.042f
@@ -550,12 +744,33 @@ class ChartRenderer {
             val abbrev = getPlanetAbbreviation(planet.planet)
             val degree = (planet.longitude % 30.0).toInt()
             val degreeSuper = toSuperscript(degree)
+            val degreeInSign = planet.longitude % 30.0
 
             // Build status indicators matching AstroSage style
             val statusIndicators = buildString {
+                // Retrograde - use asterisk (*) like AstroSage
                 if (planet.isRetrograde) append("*")
-                if (isExalted(planet.planet, planet.sign)) append("\u2191") // ↑ for exalted
-                if (isDebilitated(planet.planet, planet.sign)) append("\u2193") // ↓ for debilitated
+
+                // Combust - use caret (^) like AstroSage
+                if (sunPosition != null && isCombust(planet.planet, planet.longitude,
+                                                     sunPosition.longitude, planet.isRetrograde)) {
+                    append("^")
+                }
+
+                // Vargottama - use square/box symbol (¤) like AstroSage
+                if (isVargottama(planet.planet, planet.sign, degreeInSign)) {
+                    append("\u00A4") // ¤ symbol
+                }
+
+                // Exalted - use upward arrow (↑)
+                if (isExalted(planet.planet, planet.sign)) {
+                    append("\u2191") // ↑ for exalted
+                }
+
+                // Debilitated - use downward arrow (↓)
+                if (isDebilitated(planet.planet, planet.sign)) {
+                    append("\u2193") // ↓ for debilitated
+                }
             }
 
             val displayText = "$abbrev$degreeSuper$statusIndicators"
