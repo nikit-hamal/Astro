@@ -59,7 +59,7 @@ private val TextSecondary = Color(0xFFB0B0B0)
 private val TextMuted = Color(0xFF757575)
 private val DividerColor = Color(0xFF333333)
 
-// Planet colors
+// Planet colors (including outer planets for complete coverage)
 private val planetColors = mapOf(
     Planet.SUN to Color(0xFFD2691E),
     Planet.MOON to Color(0xFFDC143C),
@@ -69,7 +69,10 @@ private val planetColors = mapOf(
     Planet.VENUS to Color(0xFF9370DB),
     Planet.SATURN to Color(0xFF4169E1),
     Planet.RAHU to Color(0xFF8B0000),
-    Planet.KETU to Color(0xFF8B0000)
+    Planet.KETU to Color(0xFF8B0000),
+    Planet.URANUS to Color(0xFF20B2AA),
+    Planet.NEPTUNE to Color(0xFF4682B4),
+    Planet.PLUTO to Color(0xFF800080)
 )
 
 /**

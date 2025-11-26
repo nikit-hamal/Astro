@@ -30,33 +30,51 @@ import kotlin.math.min
  *
  * Standard North Indian Chart Layout (Houses numbered 1-12):
  * Ascendant is ALWAYS in the top center diamond (House 1)
- * Signs rotate through houses based on rising sign
+ * Houses flow COUNTER-CLOCKWISE from House 1
  *
- * Visual Reference (matching AstroSage):
- *      ┌─────────────────────────────────────────┐
- *      │ ╲                              ╱        │
- *      │   ╲           12           ╱     1     │
- *      │     ╲                   ╱              │
- *      │  11   ╲               ╱          2    │
- *      │         ╲           ╱                  │
- *      │───────────╲       ╱───────────────────│
- *      │             ╲   ╱                      │
- *      │  10          ╲╱          3            │
- *      │              ╱╲                        │
- *      │───────────╱    ╲──────────────────────│
- *      │         ╱        ╲                     │
- *      │   9   ╱            ╲        4         │
- *      │     ╱                ╲                 │
- *      │   ╱         8          ╲     5        │
- *      │ ╱                        ╲             │
- *      │╱              7            ╲          │
- *      └─────────────────────────────────────────┘
+ * Visual Reference (matching AstroSage exactly):
+ *
+ *       ┌────────────────────────────────────────┐
+ *       │\              2               /        │
+ *       │  \                          /    1    │
+ *       │ 3  \                      /           │
+ *       │      \                  /         12  │
+ *       │        \              /               │
+ *       │─────────\────────────/────────────────│
+ *       │           \        /                  │
+ *       │    4       \      /       11          │
+ *       │             \    /                    │
+ *       │──────────────\  /─────────────────────│
+ *       │               \/                      │
+ *       │               /\                      │
+ *       │    5        /    \        10          │
+ *       │           /        \                  │
+ *       │─────────/────────────\────────────────│
+ *       │       /       7        \       9      │
+ *       │  6  /                    \            │
+ *       │   /                        \     8    │
+ *       │ /                            \        │
+ *       └────────────────────────────────────────┘
+ *
+ * House positions (counter-clockwise from House 1):
+ * - House 1:  Top center diamond (Lagna/Ascendant)
+ * - House 2:  Top-left corner triangle
+ * - House 3:  Left side upper triangle
+ * - House 4:  Left center diamond
+ * - House 5:  Left side lower triangle
+ * - House 6:  Bottom-left corner triangle
+ * - House 7:  Bottom center diamond
+ * - House 8:  Bottom-right corner triangle
+ * - House 9:  Right side lower triangle
+ * - House 10: Right center diamond
+ * - House 11: Right side upper triangle
+ * - House 12: Top-right corner triangle
  *
  * The chart has:
  * - Outer square border
  * - Central diamond (connecting midpoints of sides)
  * - Two corner-to-corner diagonals
- * This creates 12 distinct triangular houses
+ * This creates 12 distinct triangular/diamond houses
  */
 class ChartRenderer {
 
@@ -438,34 +456,39 @@ class ChartRenderer {
      * The chart is a square with:
      * - Central diamond (connecting midpoints of sides)
      * - Two corner-to-corner diagonals
-     * This creates 12 triangular houses.
+     * This creates 12 triangular/diamond houses.
      *
      * Standard North Indian layout (AstroSage reference):
      *
-     *      ┌─────────────────────────────────────────┐
-     *      │ ╲              12              ╱        │
-     *      │   ╲                         ╱    1     │
-     *      │     ╲                     ╱            │
-     *      │  11   ╲                 ╱         2   │
-     *      │         ╲             ╱                │
-     *      │───────────╲─────────╱──────────────────│
-     *      │             ╲     ╱                    │
-     *      │   10         ╲   ╱         3          │
-     *      │               ╲ ╱                      │
-     *      │───────────────╳────────────────────────│
-     *      │               ╱ ╲                      │
-     *      │    9        ╱     ╲        4          │
-     *      │           ╱         ╲                  │
-     *      │─────────╱─────────────╲────────────────│
-     *      │       ╱        8        ╲      5      │
-     *      │     ╱                     ╲            │
-     *      │   ╱             7           ╲         │
-     *      │ ╱                6            ╲       │
-     *      └─────────────────────────────────────────┘
+     *       ┌────────────────────────────────────────┐
+     *       │\              2               /        │
+     *       │  \                          /    1    │
+     *       │ 3  \                      /           │
+     *       │      \                  /         12  │
+     *       │        \              /               │
+     *       │─────────\────────────/────────────────│
+     *       │           \        /                  │
+     *       │    4       \      /       11          │
+     *       │             \    /                    │
+     *       │──────────────\  /─────────────────────│
+     *       │               \/                      │
+     *       │               /\                      │
+     *       │    5        /    \        10          │
+     *       │           /        \                  │
+     *       │─────────/────────────\────────────────│
+     *       │       /       7        \       9      │
+     *       │  6  /                    \            │
+     *       │   /                        \     8    │
+     *       │ /                            \        │
+     *       └────────────────────────────────────────┘
      *
-     * House 1 is at TOP-RIGHT area (Lagna/Ascendant)
-     * House 7 is at BOTTOM-CENTER (opposite to Lagna)
-     * Houses proceed counter-clockwise from House 1
+     * House 1 is at TOP-CENTER diamond (Lagna/Ascendant)
+     * House 7 is at BOTTOM-CENTER diamond (opposite to Lagna)
+     * Houses proceed COUNTER-CLOCKWISE from House 1:
+     * 1 (top center) -> 2 (top-left corner) -> 3 (left upper) -> 4 (left center) ->
+     * 5 (left lower) -> 6 (bottom-left corner) -> 7 (bottom center) ->
+     * 8 (bottom-right corner) -> 9 (right lower) -> 10 (right center) ->
+     * 11 (right upper) -> 12 (top-right corner) -> back to 1
      */
     private fun DrawScope.drawAllHouseContents(
         left: Float,
@@ -502,9 +525,12 @@ class ChartRenderer {
             )
 
             // Draw Lagna marker in house 1 (matching AstroSage style)
+            // The "La" marker indicates the Ascendant/Lagna and is placed
+            // above the planet positions in House 1
             if (houseNum == 1) {
-                // Draw "La" marker for Lagna (Ascendant) in the first house
-                val lagnaMarkerPos = Offset(centerX, top + chartSize * 0.18f)
+                // Position Lagna marker above where planets would be drawn
+                // in House 1 (top center diamond)
+                val lagnaMarkerPos = Offset(centerX, top + chartSize * 0.15f)
                 drawTextCentered(
                     text = "La",
                     position = lagnaMarkerPos,
@@ -526,22 +552,43 @@ class ChartRenderer {
      * Get the center position for placing planets in each house
      * This determines where planet text appears within each house section
      *
-     * North Indian chart layout (matching AstroSage):
-     * The houses are arranged in a specific pattern around the square chart.
-     * Looking at the AstroSage reference image:
+     * North Indian chart layout (matching AstroSage exactly):
+     * Houses flow COUNTER-CLOCKWISE from House 1:
      *
-     * - House 1: Top center area (upper diamond triangle) - this is where Lagna marker goes
-     * - House 2: Top right corner triangle
-     * - House 3: Right side upper trapezoid
-     * - House 4: Right side lower trapezoid
-     * - House 5: Bottom right corner triangle
-     * - House 6: Bottom center right area
-     * - House 7: Bottom center area (lower diamond triangle)
-     * - House 8: Bottom center left area
-     * - House 9: Bottom left corner triangle
-     * - House 10: Left side lower trapezoid
-     * - House 11: Left side upper trapezoid
-     * - House 12: Top left corner triangle
+     *       ┌────────────────────────────────────────┐
+     *       │\              2               /        │
+     *       │  \                          /    1    │
+     *       │ 3  \                      /           │
+     *       │      \                  /         12  │
+     *       │        \              /               │
+     *       │─────────\────────────/────────────────│
+     *       │           \        /                  │
+     *       │    4       \      /       11          │
+     *       │             \    /                    │
+     *       │──────────────\  /─────────────────────│
+     *       │               \/                      │
+     *       │               /\                      │
+     *       │    5        /    \        10          │
+     *       │           /        \                  │
+     *       │─────────/────────────\────────────────│
+     *       │       /       7        \       9      │
+     *       │  6  /                    \            │
+     *       │   /                        \     8    │
+     *       │ /                            \        │
+     *       └────────────────────────────────────────┘
+     *
+     * - House 1:  Top center diamond (Lagna/Ascendant)
+     * - House 2:  Top-left corner triangle
+     * - House 3:  Left side upper triangle
+     * - House 4:  Left center diamond
+     * - House 5:  Left side lower triangle
+     * - House 6:  Bottom-left corner triangle
+     * - House 7:  Bottom center diamond
+     * - House 8:  Bottom-right corner triangle
+     * - House 9:  Right side lower triangle
+     * - House 10: Right center diamond
+     * - House 11: Right side upper triangle
+     * - House 12: Top-right corner triangle
      */
     private fun getHousePlanetCenter(
         houseNum: Int,
@@ -553,70 +600,103 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        // Divide chart into precise sections for accurate positioning
-        val quarterW = chartSize / 4
-        val quarterH = chartSize / 4
-        val eighthW = chartSize / 8
-        val eighthH = chartSize / 8
+
+        // Calculate key geometric points for precise positioning
+        // The chart is divided by:
+        // 1. Central diamond connecting midpoints of sides
+        // 2. Two corner-to-corner diagonals
+
+        // Midpoints of the sides (diamond vertices)
+        val midTop = top
+        val midBottom = bottom
+        val midLeft = left
+        val midRight = right
+
+        // For triangular houses (corners), position text in the centroid area
+        // For diamond houses (center sides), position text in the center of the diamond
+
+        // Offsets to position text within each house section
+        // These are tuned to match AstroSage visual layout
+        val cornerOffset = chartSize * 0.18f  // Distance from corner for corner triangles
+        val sideOffset = chartSize * 0.15f    // Distance from edge for side triangles
+        val diamondOffset = chartSize * 0.25f // Distance from center for diamond houses
 
         return when (houseNum) {
-            // House 1: Top center diamond - upper central area
-            1 -> Offset(centerX, top + quarterH)
+            // House 1: Top center diamond - Lagna/Ascendant position
+            // This is the upper portion of the central diamond
+            1 -> Offset(centerX, top + diamondOffset)
 
-            // House 2: Top right corner triangle - positioned in upper right
-            2 -> Offset(right - quarterW, top + quarterH)
+            // House 2: Top-left corner triangle
+            // Small triangle at top-left, above the main diagonal
+            2 -> Offset(left + cornerOffset, top + cornerOffset)
 
-            // House 3: Right side upper trapezoid - right middle-upper
-            3 -> Offset(right - eighthW * 1.5f, centerY - eighthH)
+            // House 3: Left side upper triangle
+            // Triangle on left side, between top corner and center
+            3 -> Offset(left + sideOffset, centerY - chartSize * 0.18f)
 
-            // House 4: Right side lower trapezoid - right middle-lower
-            4 -> Offset(right - eighthW * 1.5f, centerY + eighthH)
+            // House 4: Left center diamond
+            // The left portion of the central diamond
+            4 -> Offset(left + diamondOffset, centerY)
 
-            // House 5: Bottom right corner triangle - lower right
-            5 -> Offset(right - quarterW, bottom - quarterH)
+            // House 5: Left side lower triangle
+            // Triangle on left side, between center and bottom corner
+            5 -> Offset(left + sideOffset, centerY + chartSize * 0.18f)
 
-            // House 6: Bottom center right - between House 7 and House 5
-            6 -> Offset(centerX + quarterW * 0.6f, bottom - quarterH)
+            // House 6: Bottom-left corner triangle
+            // Small triangle at bottom-left, below the main diagonal
+            6 -> Offset(left + cornerOffset, bottom - cornerOffset)
 
-            // House 7: Bottom center diamond - lower central area
-            7 -> Offset(centerX, bottom - quarterH)
+            // House 7: Bottom center diamond
+            // The lower portion of the central diamond (opposite House 1)
+            7 -> Offset(centerX, bottom - diamondOffset)
 
-            // House 8: Bottom center left - between House 7 and House 9
-            8 -> Offset(centerX - quarterW * 0.6f, bottom - quarterH)
+            // House 8: Bottom-right corner triangle
+            // Small triangle at bottom-right, below the main diagonal
+            8 -> Offset(right - cornerOffset, bottom - cornerOffset)
 
-            // House 9: Bottom left corner triangle - lower left
-            9 -> Offset(left + quarterW, bottom - quarterH)
+            // House 9: Right side lower triangle
+            // Triangle on right side, between center and bottom corner
+            9 -> Offset(right - sideOffset, centerY + chartSize * 0.18f)
 
-            // House 10: Left side lower trapezoid - left middle-lower
-            10 -> Offset(left + eighthW * 1.5f, centerY + eighthH)
+            // House 10: Right center diamond
+            // The right portion of the central diamond (opposite House 4)
+            10 -> Offset(right - diamondOffset, centerY)
 
-            // House 11: Left side upper trapezoid - left middle-upper
-            11 -> Offset(left + eighthW * 1.5f, centerY - eighthH)
+            // House 11: Right side upper triangle
+            // Triangle on right side, between top corner and center
+            11 -> Offset(right - sideOffset, centerY - chartSize * 0.18f)
 
-            // House 12: Top left corner triangle - upper left
-            12 -> Offset(left + quarterW, top + quarterH)
+            // House 12: Top-right corner triangle
+            // Small triangle at top-right, above the main diagonal
+            12 -> Offset(right - cornerOffset, top + cornerOffset)
 
             else -> Offset(centerX, centerY)
         }
     }
 
     /**
-     * Get position for house number (placed at the outer edges of each house section)
+     * Get position for house number (placed INSIDE each house section)
      * Numbers are placed strategically to match AstroSage layout
      *
-     * In AstroSage reference:
-     * - House 1 number appears at top center near the top edge
-     * - House 2 number appears at top right corner
-     * - House 3 number appears at right edge upper area
-     * - House 4 number appears at right edge lower area
-     * - House 5 number appears at bottom right corner
-     * - House 6 number appears at bottom edge right of center
-     * - House 7 number appears at bottom center
-     * - House 8 number appears at bottom edge left of center
-     * - House 9 number appears at bottom left corner
-     * - House 10 number appears at left edge lower area
-     * - House 11 number appears at left edge upper area
-     * - House 12 number appears at top left corner
+     * In AstroSage reference, house numbers are placed INSIDE each house section,
+     * typically in a position that doesn't interfere with planet text.
+     * For corner triangles: numbers near the diagonal edge
+     * For side triangles: numbers near the outer edge
+     * For diamond houses: numbers near the edge of the diamond
+     *
+     * House number positions (matching AstroSage):
+     * - House 1:  Inside top center diamond, near top-right edge
+     * - House 2:  Inside top-left corner, near the diagonal
+     * - House 3:  Inside left upper triangle, near outer edge
+     * - House 4:  Inside left center diamond, near left edge
+     * - House 5:  Inside left lower triangle, near outer edge
+     * - House 6:  Inside bottom-left corner, near the diagonal
+     * - House 7:  Inside bottom center diamond, near bottom edge
+     * - House 8:  Inside bottom-right corner, near the diagonal
+     * - House 9:  Inside right lower triangle, near outer edge
+     * - House 10: Inside right center diamond, near right edge
+     * - House 11: Inside right upper triangle, near outer edge
+     * - House 12: Inside top-right corner, near the diagonal
      */
     private fun getHouseNumberPosition(
         houseNum: Int,
@@ -628,55 +708,91 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        // Use consistent margin from edges
-        val margin = chartSize * 0.04f
-        val quarterW = chartSize / 4
-        val quarterH = chartSize / 4
+
+        // Offsets tuned to place numbers inside houses without overlapping planets
+        // Numbers should be closer to the edges/diagonals than planet positions
+        val cornerNumberOffset = chartSize * 0.12f  // For corner triangles - closer to diagonal
+        val sideNumberOffset = chartSize * 0.08f    // For side triangles - near outer edge
+        val diamondNumberOffset = chartSize * 0.38f // For diamond houses - near outer edge of diamond
 
         return when (houseNum) {
-            // House 1: Top center - placed at top edge, center
-            1 -> Offset(centerX, top + margin * 2)
+            // House 1: Inside top center diamond, positioned toward right side
+            // Number "1" goes near the top-right portion of the diamond
+            1 -> Offset(centerX + chartSize * 0.12f, top + diamondNumberOffset)
 
-            // House 2: Top right corner - placed near the top-right corner
-            2 -> Offset(right - margin * 2, top + margin * 2)
+            // House 2: Inside top-left corner triangle
+            // Number "2" goes in the upper portion, near center of triangle
+            2 -> Offset(centerX - chartSize * 0.18f, top + cornerNumberOffset)
 
-            // House 3: Right side upper - placed at right edge, above center
-            3 -> Offset(right - margin * 1.5f, centerY - quarterH * 0.5f)
+            // House 3: Inside left side upper triangle
+            // Number "3" goes near the outer left edge
+            3 -> Offset(left + sideNumberOffset, centerY - chartSize * 0.28f)
 
-            // House 4: Right side lower - placed at right edge, below center
-            4 -> Offset(right - margin * 1.5f, centerY + quarterH * 0.5f)
+            // House 4: Inside left center diamond
+            // Number "4" goes near the left edge of diamond
+            4 -> Offset(left + diamondNumberOffset - chartSize * 0.12f, centerY + chartSize * 0.08f)
 
-            // House 5: Bottom right corner - placed near the bottom-right corner
-            5 -> Offset(right - margin * 2, bottom - margin * 2)
+            // House 5: Inside left side lower triangle
+            // Number "5" goes near the outer left edge
+            5 -> Offset(left + sideNumberOffset, centerY + chartSize * 0.28f)
 
-            // House 6: Bottom center right - placed at bottom edge, right of center
-            6 -> Offset(centerX + quarterW * 0.5f, bottom - margin * 2)
+            // House 6: Inside bottom-left corner triangle
+            // Number "6" goes in the lower portion, near center of triangle
+            6 -> Offset(centerX - chartSize * 0.18f, bottom - cornerNumberOffset)
 
-            // House 7: Bottom center - placed at bottom edge, center
-            7 -> Offset(centerX, bottom - margin * 2)
+            // House 7: Inside bottom center diamond
+            // Number "7" goes near the bottom edge of diamond
+            7 -> Offset(centerX, bottom - diamondNumberOffset)
 
-            // House 8: Bottom center left - placed at bottom edge, left of center
-            8 -> Offset(centerX - quarterW * 0.5f, bottom - margin * 2)
+            // House 8: Inside bottom-right corner triangle
+            // Number "8" goes in the lower portion, near center of triangle
+            8 -> Offset(centerX + chartSize * 0.18f, bottom - cornerNumberOffset)
 
-            // House 9: Bottom left corner - placed near the bottom-left corner
-            9 -> Offset(left + margin * 2, bottom - margin * 2)
+            // House 9: Inside right side lower triangle
+            // Number "9" goes near the outer right edge
+            9 -> Offset(right - sideNumberOffset, centerY + chartSize * 0.28f)
 
-            // House 10: Left side lower - placed at left edge, below center
-            10 -> Offset(left + margin * 1.5f, centerY + quarterH * 0.5f)
+            // House 10: Inside right center diamond
+            // Number "10" goes near the right edge of diamond
+            10 -> Offset(right - diamondNumberOffset + chartSize * 0.12f, centerY + chartSize * 0.08f)
 
-            // House 11: Left side upper - placed at left edge, above center
-            11 -> Offset(left + margin * 1.5f, centerY - quarterH * 0.5f)
+            // House 11: Inside right side upper triangle
+            // Number "11" goes near the outer right edge
+            11 -> Offset(right - sideNumberOffset, centerY - chartSize * 0.28f)
 
-            // House 12: Top left corner - placed near the top-left corner
-            12 -> Offset(left + margin * 2, top + margin * 2)
+            // House 12: Inside top-right corner triangle
+            // Number "12" goes in the upper portion, near center of triangle
+            12 -> Offset(centerX + chartSize * 0.18f, top + cornerNumberOffset)
 
             else -> Offset(centerX, centerY)
         }
     }
 
     /**
+     * Determine if a house is a corner triangle (smaller area) or a diamond/side house (larger area)
+     *
+     * Corner triangles (smaller, need tighter layout): Houses 2, 6, 8, 12
+     * Side triangles (medium size): Houses 3, 5, 9, 11
+     * Diamond houses (larger, more space): Houses 1, 4, 7, 10
+     */
+    private fun getHouseType(houseNum: Int): HouseType {
+        return when (houseNum) {
+            1, 4, 7, 10 -> HouseType.DIAMOND      // Center diamonds - largest area
+            3, 5, 9, 11 -> HouseType.SIDE         // Side triangles - medium area
+            2, 6, 8, 12 -> HouseType.CORNER       // Corner triangles - smallest area
+            else -> HouseType.DIAMOND
+        }
+    }
+
+    private enum class HouseType {
+        DIAMOND,    // Center diamond houses (1, 4, 7, 10) - more space
+        SIDE,       // Side triangle houses (3, 5, 9, 11) - medium space
+        CORNER      // Corner triangle houses (2, 6, 8, 12) - least space
+    }
+
+    /**
      * Draw planets positioned within a house with degree superscripts and status indicators
-     * Layout adjusts based on number of planets to prevent overlap
+     * Layout adjusts based on number of planets AND house type to prevent overlap
      *
      * Status indicators (matching AstroSage exactly):
      * - * : Retrograde
@@ -684,6 +800,11 @@ class ChartRenderer {
      * - ¤ : Vargottama (same sign in D1 and D9)
      * - ↑ : Exalted
      * - ↓ : Debilitated
+     *
+     * Layout strategy:
+     * - Diamond houses (1, 4, 7, 10): Can fit more planets vertically
+     * - Side triangle houses (3, 5, 9, 11): Medium capacity
+     * - Corner triangle houses (2, 6, 8, 12): Tightest layout needed
      */
     private fun DrawScope.drawPlanetsInHouse(
         planets: List<PlanetPosition>,
@@ -693,12 +814,44 @@ class ChartRenderer {
         chart: VedicChart? = null,
         sunPosition: PlanetPosition? = null
     ) {
-        val textSize = size * 0.032f
-        val lineHeight = size * 0.042f
+        // Adaptive text size based on house type and planet count
+        val houseType = getHouseType(houseNum)
+        val baseTextSize = size * 0.032f
+        val textSize = when {
+            planets.size > 4 && houseType == HouseType.CORNER -> baseTextSize * 0.85f
+            planets.size > 3 && houseType == HouseType.CORNER -> baseTextSize * 0.9f
+            planets.size > 5 -> baseTextSize * 0.9f
+            else -> baseTextSize
+        }
 
-        // Calculate layout based on number of planets
-        val columns = if (planets.size > 3) 2 else 1
+        // Adaptive line height based on house type
+        val baseLineHeight = size * 0.042f
+        val lineHeight = when (houseType) {
+            HouseType.CORNER -> baseLineHeight * 0.85f  // Tighter spacing for corners
+            HouseType.SIDE -> baseLineHeight * 0.9f
+            HouseType.DIAMOND -> baseLineHeight
+        }
+
+        // Determine column layout based on planet count and house type
+        val columns = when {
+            // Corner houses: use 2 columns for 3+ planets
+            houseType == HouseType.CORNER && planets.size >= 3 -> 2
+            // Side houses: use 2 columns for 4+ planets
+            houseType == HouseType.SIDE && planets.size >= 4 -> 2
+            // Diamond houses: use 2 columns for 5+ planets
+            houseType == HouseType.DIAMOND && planets.size >= 5 -> 2
+            // Default: single column
+            else -> 1
+        }
+
         val itemsPerColumn = (planets.size + columns - 1) / columns
+
+        // Column spacing adapted to house type
+        val columnSpacing = when (houseType) {
+            HouseType.CORNER -> size * 0.055f   // Tighter for corners
+            HouseType.SIDE -> size * 0.065f
+            HouseType.DIAMOND -> size * 0.08f
+        }
 
         planets.forEachIndexed { index, planet ->
             val abbrev = getPlanetAbbreviation(planet.planet)
@@ -706,7 +859,7 @@ class ChartRenderer {
             val degreeSuper = toSuperscript(degree)
 
             // Build status indicators matching AstroSage style exactly
-            // Order: Retrograde*, Combust^, Vargottama¤, Exalted↑, Debilitated↓
+            // Order: Retrograde*, Exalted↑/Debilitated↓, Combust^, Vargottama¤
             val statusIndicators = buildString {
                 // 1. Retrograde indicator
                 if (planet.isRetrograde) append(SYMBOL_RETROGRADE)
@@ -738,7 +891,7 @@ class ChartRenderer {
             val row = index / columns
 
             val xOffset = if (columns > 1) {
-                (col - 0.5f) * size * 0.08f
+                (col - 0.5f) * columnSpacing
             } else {
                 0f
             }
