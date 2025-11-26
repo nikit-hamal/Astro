@@ -21,7 +21,8 @@ import kotlin.math.min
  *
  * Authentic North Indian chart format matching traditional Vedic astrology software:
  * - SQUARE outer boundary
- * - Central diamond created by diagonal lines
+ * - Central diamond created by connecting midpoints of sides
+ * - Full corner-to-corner diagonals creating proper 12-house divisions
  * - 12 houses in traditional layout
  * - Planet positions with degree superscripts
  * - Status indicators (retrograde, combust, exalted, debilitated, vargottama)
@@ -30,29 +31,32 @@ import kotlin.math.min
  * Ascendant is ALWAYS in the top center diamond (House 1)
  * Signs rotate through houses based on rising sign
  *
- *    ┌────────────┬────────────┐
- *    │     12     │     1      │   (Top row - triangular sections)
- *    │   ╲      ╱ │ ╲      ╱   │
- *    │    ╲    ╱  │  ╲    ╱    │
- *    │     ╲  ╱   │   ╲  ╱     │
- * ┌──┼──────╳─────┼─────╳──────┼──┐
- * │11│     ╱ ╲    │    ╱ ╲     │2 │
- * │  │    ╱   ╲   │   ╱   ╲    │  │
- * ├──┤   ╱     ╲  │  ╱     ╲   ├──┤
- * │10│  ╱  ASC  ╲ │ ╱       ╲  │3 │
- * │  │ ╱         ╲│╱         ╲ │  │
- * ├──┼────────────┼────────────┼──┤
- * │9 │ ╲         ╱│╲         ╱ │4 │
- * │  │  ╲       ╱ │ ╲       ╱  │  │
- * ├──┤   ╲     ╱  │  ╲     ╱   ├──┤
- * │8 │    ╲   ╱   │   ╲   ╱    │5 │
- * │  │     ╲ ╱    │    ╲ ╱     │  │
- * └──┼──────╳─────┼─────╳──────┼──┘
- *    │     ╱  ╲   │   ╱  ╲     │
- *    │    ╱    ╲  │  ╱    ╲    │
- *    │   ╱      ╲ │ ╱      ╲   │
- *    │     7      │     6      │   (Bottom row - triangular sections)
- *    └────────────┴────────────┘
+ *      ┌─────────────────────────────────┐
+ *      │ ╲           12          ╱  1  ╱ │
+ *      │   ╲                   ╱     ╱   │
+ *      │ 11  ╲               ╱     ╱  2  │
+ *      │       ╲           ╱     ╱       │
+ *      │─────────╲       ╱─────╱─────────│
+ *      │           ╲   ╱     ╱           │
+ *      │ 10         ╲╱     ╱          3  │
+ *      │            ╱╲   ╱               │
+ *      │          ╱    ╲╱                │
+ *      │        ╱     ╱╲                 │
+ *      │      ╱     ╱    ╲               │
+ *      │    ╱     ╱        ╲          4  │
+ *      │  9     ╱            ╲           │
+ *      │      ╱                ╲         │
+ *      │─────╱───────────────────╲───────│
+ *      │   ╱        7          8   ╲  5  │
+ *      │ ╱                           ╲   │
+ *      │╱              6               ╲ │
+ *      └─────────────────────────────────┘
+ *
+ * The chart has:
+ * - Outer square border
+ * - Central diamond (connecting midpoints of sides)
+ * - Two corner-to-corner diagonals
+ * This creates 12 distinct triangular houses
  */
 class ChartRenderer {
 
@@ -226,20 +230,25 @@ class ChartRenderer {
             )
 
             // Draw the internal structure - North Indian diamond pattern
-            // Draw diagonals from corners to center
-            drawLine(BORDER_COLOR, Offset(left, top), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, top), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, bottom), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(left, bottom), Offset(centerX, centerY), strokeWidth = 2.5f)
+            // This creates the classic 12-house layout with a central diamond
 
-            // Draw horizontal and vertical lines through center (creating the cross)
+            // Key points for the diamond structure
             val midTop = Offset(centerX, top)
             val midRight = Offset(right, centerY)
             val midBottom = Offset(centerX, bottom)
             val midLeft = Offset(left, centerY)
 
-            drawLine(BORDER_COLOR, midTop, midBottom, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midLeft, midRight, strokeWidth = 2.5f)
+            // Draw the central diamond by connecting midpoints of sides
+            // This creates the iconic North Indian chart diamond in the center
+            drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
+
+            // Draw the corner-to-corner diagonals (full diagonals, not to center)
+            // These divide the corner triangles into 2 houses each
+            drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
 
             // Get ascendant sign number for mapping houses to signs
             val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
@@ -248,15 +257,6 @@ class ChartRenderer {
             drawAllHouseContents(
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, chart.planetPositions, size
-            )
-
-            // Draw "La" (Lagna) marker in center
-            drawTextCentered(
-                text = "La",
-                position = Offset(centerX, centerY),
-                textSize = size * 0.045f,
-                color = LAGNA_COLOR,
-                isBold = true
             )
         }
     }
@@ -295,19 +295,26 @@ class ChartRenderer {
                 style = Stroke(width = 3f)
             )
 
-            // Draw diagonal lines from corners to center
-            drawLine(BORDER_COLOR, Offset(left, top), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, top), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, bottom), Offset(centerX, centerY), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(left, bottom), Offset(centerX, centerY), strokeWidth = 2.5f)
+            // Draw the internal structure - North Indian diamond pattern
+            // This creates the classic 12-house layout with a central diamond
 
-            // Draw horizontal and vertical lines through center
+            // Key points for the diamond structure
             val midTop = Offset(centerX, top)
             val midRight = Offset(right, centerY)
             val midBottom = Offset(centerX, bottom)
             val midLeft = Offset(left, centerY)
-            drawLine(BORDER_COLOR, midTop, midBottom, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midLeft, midRight, strokeWidth = 2.5f)
+
+            // Draw the central diamond by connecting midpoints of sides
+            // This creates the iconic North Indian chart diamond in the center
+            drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
+
+            // Draw the corner-to-corner diagonals (full diagonals, not to center)
+            // These divide the corner triangles into 2 houses each
+            drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
+            drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
 
             // Get ascendant sign
             val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
@@ -317,15 +324,6 @@ class ChartRenderer {
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, planetPositions, size
             )
-
-            // Draw chart title in center
-            drawTextCentered(
-                text = chartTitle,
-                position = Offset(centerX, centerY),
-                textSize = size * 0.04f,
-                color = TITLE_COLOR,
-                isBold = true
-            )
         }
     }
 
@@ -333,32 +331,33 @@ class ChartRenderer {
      * Draw all house contents including house numbers and planets
      *
      * North Indian Chart House Layout:
-     * The chart is a square divided into 12 sections by diagonal and perpendicular lines.
+     * The chart is a square with:
+     * - Central diamond (connecting midpoints of sides)
+     * - Two corner-to-corner diagonals
+     * This creates 12 triangular houses.
      *
-     * Visual layout matching AstroSage:
+     * Standard North Indian layout:
      *
-     *        ┌───────────────────────────────┐
-     *        │\             │             /│
-     *        │ \    12      │     1      / │
-     *        │  \           │           /  │
-     *        │   \──────────┴──────────/   │
-     *        │ 11 \                   / 2  │
-     *        │     \                 /     │
-     *        ├──────\               /──────┤
-     *        │       \    (La)     /       │
-     *        │  10    \           /    3   │
-     *        │         \         /         │
-     *        ├──────────\       /──────────┤
-     *        │           \     /           │
-     *        │   9       /     \       4   │
-     *        │          /       \          │
-     *        │─────────/         \─────────│
-     *        │   8    /           \    5   │
-     *        │       /             \       │
-     *        │      /───────┬───────\      │
-     *        │     /    7   │   6    \     │
-     *        │    /         │         \    │
-     *        └───/──────────┴──────────\───┘
+     *      ┌─────────────────────────────────┐
+     *      │╲            12             ╱    │
+     *      │  ╲                       ╱   2  │
+     *      │ 11 ╲                   ╱        │
+     *      │      ╲───────────────╱         │
+     *      │        ╲     1     ╱           │
+     *      │──────────╲       ╱─────────────│
+     *      │            ╲   ╱               │
+     *      │  10         ╳           3      │
+     *      │            ╱ ╲                 │
+     *      │──────────╱     ╲───────────────│
+     *      │        ╱    7    ╲             │
+     *      │      ╱─────────────╲           │
+     *      │  9 ╱                 ╲    4    │
+     *      │  ╱         8          ╲        │
+     *      │╱            6            ╲  5  │
+     *      └─────────────────────────────────┘
+     *
+     * House 1 is at TOP CENTER (Lagna/Ascendant)
+     * House 7 is at BOTTOM CENTER (opposite to Lagna)
      */
     private fun DrawScope.drawAllHouseContents(
         left: Float,
@@ -402,7 +401,19 @@ class ChartRenderer {
      * Get the center position for placing planets in each house
      * This determines where planet text appears within each house section
      *
-     * North Indian chart - planets go in the CENTER of each triangular/rectangular section
+     * North Indian chart layout:
+     * - House 1: Top center diamond (Lagna)
+     * - House 2: Top right triangle
+     * - House 3: Right side upper
+     * - House 4: Right side lower
+     * - House 5: Bottom right triangle
+     * - House 6: Bottom center right
+     * - House 7: Bottom center diamond (opposite to Lagna)
+     * - House 8: Bottom center left
+     * - House 9: Bottom left triangle
+     * - House 10: Left side lower
+     * - House 11: Left side upper
+     * - House 12: Top left triangle
      */
     private fun getHousePlanetCenter(
         houseNum: Int,
@@ -414,45 +425,46 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        val quarterW = chartSize / 4
-        val quarterH = chartSize / 4
+        // Divide chart into sixths for precise positioning
+        val sixthW = chartSize / 6
+        val sixthH = chartSize / 6
 
         return when (houseNum) {
-            // House 1: Top center-right triangle (Ascendant)
-            1 -> Offset(centerX + quarterW, top + quarterH * 1.1f)
+            // House 1: Top center diamond (Lagna/Ascendant) - upper part of central diamond
+            1 -> Offset(centerX, top + sixthH * 1.5f)
 
-            // House 2: Right upper quadrant
-            2 -> Offset(right - quarterW * 0.8f, centerY - quarterH)
+            // House 2: Top right corner triangle
+            2 -> Offset(right - sixthW * 1.2f, top + sixthH * 1.2f)
 
-            // House 3: Right lower quadrant
-            3 -> Offset(right - quarterW * 0.8f, centerY + quarterH)
+            // House 3: Right side upper trapezoid
+            3 -> Offset(right - sixthW, centerY - sixthH * 0.8f)
 
-            // House 4: Bottom center-right triangle
-            4 -> Offset(centerX + quarterW, bottom - quarterH * 1.1f)
+            // House 4: Right side lower trapezoid
+            4 -> Offset(right - sixthW, centerY + sixthH * 0.8f)
 
             // House 5: Bottom right corner triangle
-            5 -> Offset(right - quarterW * 0.6f, bottom - quarterH * 0.6f)
+            5 -> Offset(right - sixthW * 1.2f, bottom - sixthH * 1.2f)
 
-            // House 6: Bottom center-left area
-            6 -> Offset(centerX - quarterW, bottom - quarterH * 1.1f)
+            // House 6: Bottom center right - lower right part of bottom
+            6 -> Offset(centerX + sixthW * 0.8f, bottom - sixthH * 1.5f)
 
-            // House 7: Bottom left corner triangle (opposite to Ascendant)
-            7 -> Offset(left + quarterW * 0.6f, bottom - quarterH * 0.6f)
+            // House 7: Bottom center diamond (opposite to Lagna) - lower part of central diamond
+            7 -> Offset(centerX, bottom - sixthH * 1.5f)
 
-            // House 8: Left lower quadrant
-            8 -> Offset(left + quarterW * 0.8f, centerY + quarterH)
+            // House 8: Bottom center left - lower left part of bottom
+            8 -> Offset(centerX - sixthW * 0.8f, bottom - sixthH * 1.5f)
 
-            // House 9: Left upper quadrant
-            9 -> Offset(left + quarterW * 0.8f, centerY - quarterH)
+            // House 9: Bottom left corner triangle
+            9 -> Offset(left + sixthW * 1.2f, bottom - sixthH * 1.2f)
 
-            // House 10: Top left corner triangle
-            10 -> Offset(left + quarterW * 0.6f, top + quarterH * 0.6f)
+            // House 10: Left side lower trapezoid
+            10 -> Offset(left + sixthW, centerY + sixthH * 0.8f)
 
-            // House 11: Top center-left triangle
-            11 -> Offset(centerX - quarterW, top + quarterH * 1.1f)
+            // House 11: Left side upper trapezoid
+            11 -> Offset(left + sixthW, centerY - sixthH * 0.8f)
 
-            // House 12: Top right corner triangle
-            12 -> Offset(right - quarterW * 0.6f, top + quarterH * 0.6f)
+            // House 12: Top left corner triangle
+            12 -> Offset(left + sixthW * 1.2f, top + sixthH * 1.2f)
 
             else -> Offset(centerX, centerY)
         }
@@ -460,6 +472,7 @@ class ChartRenderer {
 
     /**
      * Get position for house number (placed near the edge/corner of each house section)
+     * Numbers are placed at the outer edges of each house for clarity
      */
     private fun getHouseNumberPosition(
         houseNum: Int,
@@ -471,24 +484,47 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        val offset = chartSize * 0.06f
-        val quarterW = chartSize / 4
-        val quarterH = chartSize / 4
+        val offset = chartSize * 0.05f
+        val eighthW = chartSize / 8
+        val eighthH = chartSize / 8
 
         return when (houseNum) {
-            // House numbers placed at logical positions matching AstroSage layout
-            1 -> Offset(right - offset * 1.2f, top + offset)
-            2 -> Offset(right - offset, centerY - offset * 2.5f)
-            3 -> Offset(right - offset, centerY + offset * 2.5f)
-            4 -> Offset(right - offset * 1.2f, bottom - offset)
-            5 -> Offset(centerX + offset, bottom - offset)
-            6 -> Offset(centerX - offset, bottom - offset)
-            7 -> Offset(left + offset * 1.2f, bottom - offset)
-            8 -> Offset(left + offset, centerY + offset * 2.5f)
-            9 -> Offset(left + offset, centerY - offset * 2.5f)
-            10 -> Offset(left + offset * 1.2f, top + offset)
-            11 -> Offset(centerX - offset, top + offset)
-            12 -> Offset(centerX + offset, top + offset)
+            // House 1: Top center - place number at top edge
+            1 -> Offset(centerX, top + offset * 1.5f)
+
+            // House 2: Top right corner - place at corner area
+            2 -> Offset(right - offset * 1.5f, top + offset * 1.5f)
+
+            // House 3: Right side upper - place at right edge
+            3 -> Offset(right - offset, centerY - eighthH * 1.5f)
+
+            // House 4: Right side lower - place at right edge
+            4 -> Offset(right - offset, centerY + eighthH * 1.5f)
+
+            // House 5: Bottom right corner - place at corner area
+            5 -> Offset(right - offset * 1.5f, bottom - offset * 1.5f)
+
+            // House 6: Bottom center right - place at bottom edge
+            6 -> Offset(centerX + eighthW * 1.5f, bottom - offset * 1.5f)
+
+            // House 7: Bottom center - place number at bottom edge
+            7 -> Offset(centerX, bottom - offset * 1.5f)
+
+            // House 8: Bottom center left - place at bottom edge
+            8 -> Offset(centerX - eighthW * 1.5f, bottom - offset * 1.5f)
+
+            // House 9: Bottom left corner - place at corner area
+            9 -> Offset(left + offset * 1.5f, bottom - offset * 1.5f)
+
+            // House 10: Left side lower - place at left edge
+            10 -> Offset(left + offset, centerY + eighthH * 1.5f)
+
+            // House 11: Left side upper - place at left edge
+            11 -> Offset(left + offset, centerY - eighthH * 1.5f)
+
+            // House 12: Top left corner - place at corner area
+            12 -> Offset(left + offset * 1.5f, top + offset * 1.5f)
+
             else -> Offset(centerX, centerY)
         }
     }
