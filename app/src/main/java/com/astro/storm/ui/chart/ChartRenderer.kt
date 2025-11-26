@@ -14,43 +14,43 @@ import com.astro.storm.data.model.Planet
 import com.astro.storm.data.model.PlanetPosition
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.data.model.ZodiacSign
+import kotlin.math.abs
 import kotlin.math.min
 
 /**
  * Professional North Indian Style Vedic Chart Renderer
  *
- * Authentic North Indian chart format matching traditional Vedic astrology software:
+ * Authentic North Indian chart format matching traditional Vedic astrology software (AstroSage style):
  * - SQUARE outer boundary
  * - Central diamond created by connecting midpoints of sides
  * - Full corner-to-corner diagonals creating proper 12-house divisions
  * - 12 houses in traditional layout
  * - Planet positions with degree superscripts
- * - Status indicators (retrograde, combust, exalted, debilitated, vargottama)
+ * - Status indicators matching AstroSage: * (Retrograde), ^ (Combust), ¤ (Vargottama), ↑ (Exalted), ↓ (Debilitated)
  *
  * Standard North Indian Chart Layout (Houses numbered 1-12):
  * Ascendant is ALWAYS in the top center diamond (House 1)
  * Signs rotate through houses based on rising sign
  *
- *      ┌─────────────────────────────────┐
- *      │ ╲           12          ╱  1  ╱ │
- *      │   ╲                   ╱     ╱   │
- *      │ 11  ╲               ╱     ╱  2  │
- *      │       ╲           ╱     ╱       │
- *      │─────────╲       ╱─────╱─────────│
- *      │           ╲   ╱     ╱           │
- *      │ 10         ╲╱     ╱          3  │
- *      │            ╱╲   ╱               │
- *      │          ╱    ╲╱                │
- *      │        ╱     ╱╲                 │
- *      │      ╱     ╱    ╲               │
- *      │    ╱     ╱        ╲          4  │
- *      │  9     ╱            ╲           │
- *      │      ╱                ╲         │
- *      │─────╱───────────────────╲───────│
- *      │   ╱        7          8   ╲  5  │
- *      │ ╱                           ╲   │
- *      │╱              6               ╲ │
- *      └─────────────────────────────────┘
+ * Visual Reference (matching AstroSage):
+ *      ┌─────────────────────────────────────────┐
+ *      │ ╲                              ╱        │
+ *      │   ╲           12           ╱     1     │
+ *      │     ╲                   ╱              │
+ *      │  11   ╲               ╱          2    │
+ *      │         ╲           ╱                  │
+ *      │───────────╲       ╱───────────────────│
+ *      │             ╲   ╱                      │
+ *      │  10          ╲╱          3            │
+ *      │              ╱╲                        │
+ *      │───────────╱    ╲──────────────────────│
+ *      │         ╱        ╲                     │
+ *      │   9   ╱            ╲        4         │
+ *      │     ╱                ╲                 │
+ *      │   ╱         8          ╲     5        │
+ *      │ ╱                        ╲             │
+ *      │╱              7            ╲          │
+ *      └─────────────────────────────────────────┘
  *
  * The chart has:
  * - Outer square border
@@ -82,6 +82,13 @@ class ChartRenderer {
         private val NEPTUNE_COLOR = Color(0xFF4682B4) // Steel blue for Neptune
         private val PLUTO_COLOR = Color(0xFF800080) // Purple for Pluto
         private val LAGNA_COLOR = Color(0xFF8B4513) // Saddle brown for Lagna marker
+
+        // Status indicator symbols (matching AstroSage exactly)
+        const val SYMBOL_RETROGRADE = "*"       // Retrograde motion
+        const val SYMBOL_COMBUST = "^"          // Combust (too close to Sun)
+        const val SYMBOL_VARGOTTAMA = "\u00A4"  // ¤ - Vargottama (same sign in D1 and D9)
+        const val SYMBOL_EXALTED = "\u2191"     // ↑ - Exalted
+        const val SYMBOL_DEBILITATED = "\u2193" // ↓ - Debilitated
     }
 
     /**
@@ -196,6 +203,102 @@ class ChartRenderer {
     }
 
     /**
+     * Check if a planet is Vargottama (same sign in D1 Rashi and D9 Navamsa charts)
+     * This is a highly favorable position in Vedic astrology
+     *
+     * @param planet The planet position in the Rashi chart
+     * @param chart The full Vedic chart for calculating Navamsa
+     * @return true if the planet is in the same sign in both D1 and D9
+     */
+    private fun isVargottama(planet: PlanetPosition, chart: VedicChart): Boolean {
+        // Calculate navamsa position for this planet
+        val navamsaLongitude = calculateNavamsaLongitude(planet.longitude)
+        val navamsaSign = ZodiacSign.fromLongitude(navamsaLongitude)
+
+        // Vargottama = same sign in D1 (Rashi) and D9 (Navamsa)
+        return planet.sign == navamsaSign
+    }
+
+    /**
+     * Calculate Navamsa longitude for a given longitude
+     * Navamsa divides each sign into 9 equal parts of 3°20' each
+     */
+    private fun calculateNavamsaLongitude(longitude: Double): Double {
+        val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
+        val signNumber = (normalizedLong / 30.0).toInt() // 0-11
+        val degreeInSign = normalizedLong % 30.0
+
+        val navamsaPart = (degreeInSign / 3.333333333).toInt().coerceIn(0, 8) // 0-8
+
+        val startingSignIndex = when (signNumber % 3) {
+            0 -> signNumber              // Movable: start from same sign
+            1 -> (signNumber + 8) % 12   // Fixed: start from 9th sign
+            2 -> (signNumber + 4) % 12   // Dual: start from 5th sign
+            else -> signNumber
+        }
+
+        val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
+
+        val positionInNavamsa = degreeInSign % 3.333333333
+        val navamsaDegree = (positionInNavamsa / 3.333333333) * 30.0
+
+        return (navamsaSignIndex * 30.0) + navamsaDegree
+    }
+
+    /**
+     * Check if a planet is combust (too close to the Sun)
+     * Combustion weakens a planet's significations
+     *
+     * Combustion orbs (degrees from Sun):
+     * - Moon: 12°
+     * - Mars: 17°
+     * - Mercury: 14° (12° if retrograde)
+     * - Jupiter: 11°
+     * - Venus: 10° (8° if retrograde)
+     * - Saturn: 15°
+     *
+     * @param planet The planet position to check
+     * @param sunPosition The Sun's position (null if Sun itself)
+     * @return true if the planet is combust
+     */
+    private fun isCombust(planet: PlanetPosition, sunPosition: PlanetPosition?): Boolean {
+        // Sun itself cannot be combust
+        if (planet.planet == Planet.SUN) return false
+
+        // Rahu, Ketu, and outer planets don't combust
+        if (planet.planet in listOf(Planet.RAHU, Planet.KETU, Planet.URANUS, Planet.NEPTUNE, Planet.PLUTO)) {
+            return false
+        }
+
+        // Need Sun's position to check combustion
+        if (sunPosition == null) return false
+
+        val angularDistance = calculateAngularDistance(planet.longitude, sunPosition.longitude)
+
+        // Get combustion orb for this planet
+        val combustionOrb = when (planet.planet) {
+            Planet.MOON -> 12.0
+            Planet.MARS -> 17.0
+            Planet.MERCURY -> if (planet.isRetrograde) 12.0 else 14.0
+            Planet.JUPITER -> 11.0
+            Planet.VENUS -> if (planet.isRetrograde) 8.0 else 10.0
+            Planet.SATURN -> 15.0
+            else -> 0.0
+        }
+
+        return angularDistance <= combustionOrb
+    }
+
+    /**
+     * Calculate the angular distance between two longitudes
+     * Handles the wrap-around at 360°
+     */
+    private fun calculateAngularDistance(long1: Double, long2: Double): Double {
+        val diff = abs(long1 - long2)
+        return if (diff > 180.0) 360.0 - diff else diff
+    }
+
+    /**
      * Draw a professional North Indian style Vedic chart
      * Matches the layout and style of traditional Vedic astrology software
      */
@@ -253,10 +356,10 @@ class ChartRenderer {
             // Get ascendant sign number for mapping houses to signs
             val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
 
-            // Draw house numbers and planets
+            // Draw house numbers and planets with full chart context for status checking
             drawAllHouseContents(
                 left, top, chartSize, centerX, centerY,
-                ascendantSign, chart.planetPositions, size
+                ascendantSign, chart.planetPositions, size, chart
             )
         }
     }
@@ -269,7 +372,8 @@ class ChartRenderer {
         planetPositions: List<PlanetPosition>,
         ascendantLongitude: Double,
         size: Float,
-        chartTitle: String
+        chartTitle: String,
+        originalChart: VedicChart? = null
     ) {
         with(drawScope) {
             val padding = size * 0.02f
@@ -319,10 +423,10 @@ class ChartRenderer {
             // Get ascendant sign
             val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
 
-            // Draw house contents
+            // Draw house contents (pass original chart for status checking if available)
             drawAllHouseContents(
                 left, top, chartSize, centerX, centerY,
-                ascendantSign, planetPositions, size
+                ascendantSign, planetPositions, size, originalChart
             )
         }
     }
@@ -330,34 +434,38 @@ class ChartRenderer {
     /**
      * Draw all house contents including house numbers and planets
      *
-     * North Indian Chart House Layout:
+     * North Indian Chart House Layout (matching AstroSage exactly):
      * The chart is a square with:
      * - Central diamond (connecting midpoints of sides)
      * - Two corner-to-corner diagonals
      * This creates 12 triangular houses.
      *
-     * Standard North Indian layout:
+     * Standard North Indian layout (AstroSage reference):
      *
-     *      ┌─────────────────────────────────┐
-     *      │╲            12             ╱    │
-     *      │  ╲                       ╱   2  │
-     *      │ 11 ╲                   ╱        │
-     *      │      ╲───────────────╱         │
-     *      │        ╲     1     ╱           │
-     *      │──────────╲       ╱─────────────│
-     *      │            ╲   ╱               │
-     *      │  10         ╳           3      │
-     *      │            ╱ ╲                 │
-     *      │──────────╱     ╲───────────────│
-     *      │        ╱    7    ╲             │
-     *      │      ╱─────────────╲           │
-     *      │  9 ╱                 ╲    4    │
-     *      │  ╱         8          ╲        │
-     *      │╱            6            ╲  5  │
-     *      └─────────────────────────────────┘
+     *      ┌─────────────────────────────────────────┐
+     *      │ ╲              12              ╱        │
+     *      │   ╲                         ╱    1     │
+     *      │     ╲                     ╱            │
+     *      │  11   ╲                 ╱         2   │
+     *      │         ╲             ╱                │
+     *      │───────────╲─────────╱──────────────────│
+     *      │             ╲     ╱                    │
+     *      │   10         ╲   ╱         3          │
+     *      │               ╲ ╱                      │
+     *      │───────────────╳────────────────────────│
+     *      │               ╱ ╲                      │
+     *      │    9        ╱     ╲        4          │
+     *      │           ╱         ╲                  │
+     *      │─────────╱─────────────╲────────────────│
+     *      │       ╱        8        ╲      5      │
+     *      │     ╱                     ╲            │
+     *      │   ╱             7           ╲         │
+     *      │ ╱                6            ╲       │
+     *      └─────────────────────────────────────────┘
      *
-     * House 1 is at TOP CENTER (Lagna/Ascendant)
-     * House 7 is at BOTTOM CENTER (opposite to Lagna)
+     * House 1 is at TOP-RIGHT area (Lagna/Ascendant)
+     * House 7 is at BOTTOM-CENTER (opposite to Lagna)
+     * Houses proceed counter-clockwise from House 1
      */
     private fun DrawScope.drawAllHouseContents(
         left: Float,
@@ -367,13 +475,17 @@ class ChartRenderer {
         centerY: Float,
         ascendantSign: ZodiacSign,
         planetPositions: List<PlanetPosition>,
-        size: Float
+        size: Float,
+        chart: VedicChart? = null
     ) {
         val right = left + chartSize
         val bottom = top + chartSize
 
         // Group planets by house
         val planetsByHouse = planetPositions.groupBy { it.house }
+
+        // Get Sun position for combustion checking
+        val sunPosition = chart?.planetPositions?.find { it.planet == Planet.SUN }
 
         // Draw each house (1-12)
         for (houseNum in 1..12) {
@@ -389,10 +501,23 @@ class ChartRenderer {
                 isBold = false
             )
 
+            // Draw Lagna marker in house 1 (matching AstroSage style)
+            if (houseNum == 1) {
+                // Draw "La" marker for Lagna (Ascendant) in the first house
+                val lagnaMarkerPos = Offset(centerX, top + chartSize * 0.18f)
+                drawTextCentered(
+                    text = "La",
+                    position = lagnaMarkerPos,
+                    textSize = size * 0.035f,
+                    color = LAGNA_COLOR,
+                    isBold = true
+                )
+            }
+
             // Draw planets in this house
             val planets = planetsByHouse[houseNum] ?: emptyList()
             if (planets.isNotEmpty()) {
-                drawPlanetsInHouse(planets, houseCenter, size, houseNum)
+                drawPlanetsInHouse(planets, houseCenter, size, houseNum, chart, sunPosition)
             }
         }
     }
@@ -401,19 +526,22 @@ class ChartRenderer {
      * Get the center position for placing planets in each house
      * This determines where planet text appears within each house section
      *
-     * North Indian chart layout:
-     * - House 1: Top center diamond (Lagna)
-     * - House 2: Top right triangle
-     * - House 3: Right side upper
-     * - House 4: Right side lower
-     * - House 5: Bottom right triangle
-     * - House 6: Bottom center right
-     * - House 7: Bottom center diamond (opposite to Lagna)
-     * - House 8: Bottom center left
-     * - House 9: Bottom left triangle
-     * - House 10: Left side lower
-     * - House 11: Left side upper
-     * - House 12: Top left triangle
+     * North Indian chart layout (matching AstroSage):
+     * The houses are arranged in a specific pattern around the square chart.
+     * Looking at the AstroSage reference image:
+     *
+     * - House 1: Top center area (upper diamond triangle) - this is where Lagna marker goes
+     * - House 2: Top right corner triangle
+     * - House 3: Right side upper trapezoid
+     * - House 4: Right side lower trapezoid
+     * - House 5: Bottom right corner triangle
+     * - House 6: Bottom center right area
+     * - House 7: Bottom center area (lower diamond triangle)
+     * - House 8: Bottom center left area
+     * - House 9: Bottom left corner triangle
+     * - House 10: Left side lower trapezoid
+     * - House 11: Left side upper trapezoid
+     * - House 12: Top left corner triangle
      */
     private fun getHousePlanetCenter(
         houseNum: Int,
@@ -425,54 +553,70 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        // Divide chart into sixths for precise positioning
-        val sixthW = chartSize / 6
-        val sixthH = chartSize / 6
+        // Divide chart into precise sections for accurate positioning
+        val quarterW = chartSize / 4
+        val quarterH = chartSize / 4
+        val eighthW = chartSize / 8
+        val eighthH = chartSize / 8
 
         return when (houseNum) {
-            // House 1: Top center diamond (Lagna/Ascendant) - upper part of central diamond
-            1 -> Offset(centerX, top + sixthH * 1.5f)
+            // House 1: Top center diamond - upper central area
+            1 -> Offset(centerX, top + quarterH)
 
-            // House 2: Top right corner triangle
-            2 -> Offset(right - sixthW * 1.2f, top + sixthH * 1.2f)
+            // House 2: Top right corner triangle - positioned in upper right
+            2 -> Offset(right - quarterW, top + quarterH)
 
-            // House 3: Right side upper trapezoid
-            3 -> Offset(right - sixthW, centerY - sixthH * 0.8f)
+            // House 3: Right side upper trapezoid - right middle-upper
+            3 -> Offset(right - eighthW * 1.5f, centerY - eighthH)
 
-            // House 4: Right side lower trapezoid
-            4 -> Offset(right - sixthW, centerY + sixthH * 0.8f)
+            // House 4: Right side lower trapezoid - right middle-lower
+            4 -> Offset(right - eighthW * 1.5f, centerY + eighthH)
 
-            // House 5: Bottom right corner triangle
-            5 -> Offset(right - sixthW * 1.2f, bottom - sixthH * 1.2f)
+            // House 5: Bottom right corner triangle - lower right
+            5 -> Offset(right - quarterW, bottom - quarterH)
 
-            // House 6: Bottom center right - lower right part of bottom
-            6 -> Offset(centerX + sixthW * 0.8f, bottom - sixthH * 1.5f)
+            // House 6: Bottom center right - between House 7 and House 5
+            6 -> Offset(centerX + quarterW * 0.6f, bottom - quarterH)
 
-            // House 7: Bottom center diamond (opposite to Lagna) - lower part of central diamond
-            7 -> Offset(centerX, bottom - sixthH * 1.5f)
+            // House 7: Bottom center diamond - lower central area
+            7 -> Offset(centerX, bottom - quarterH)
 
-            // House 8: Bottom center left - lower left part of bottom
-            8 -> Offset(centerX - sixthW * 0.8f, bottom - sixthH * 1.5f)
+            // House 8: Bottom center left - between House 7 and House 9
+            8 -> Offset(centerX - quarterW * 0.6f, bottom - quarterH)
 
-            // House 9: Bottom left corner triangle
-            9 -> Offset(left + sixthW * 1.2f, bottom - sixthH * 1.2f)
+            // House 9: Bottom left corner triangle - lower left
+            9 -> Offset(left + quarterW, bottom - quarterH)
 
-            // House 10: Left side lower trapezoid
-            10 -> Offset(left + sixthW, centerY + sixthH * 0.8f)
+            // House 10: Left side lower trapezoid - left middle-lower
+            10 -> Offset(left + eighthW * 1.5f, centerY + eighthH)
 
-            // House 11: Left side upper trapezoid
-            11 -> Offset(left + sixthW, centerY - sixthH * 0.8f)
+            // House 11: Left side upper trapezoid - left middle-upper
+            11 -> Offset(left + eighthW * 1.5f, centerY - eighthH)
 
-            // House 12: Top left corner triangle
-            12 -> Offset(left + sixthW * 1.2f, top + sixthH * 1.2f)
+            // House 12: Top left corner triangle - upper left
+            12 -> Offset(left + quarterW, top + quarterH)
 
             else -> Offset(centerX, centerY)
         }
     }
 
     /**
-     * Get position for house number (placed near the edge/corner of each house section)
-     * Numbers are placed at the outer edges of each house for clarity
+     * Get position for house number (placed at the outer edges of each house section)
+     * Numbers are placed strategically to match AstroSage layout
+     *
+     * In AstroSage reference:
+     * - House 1 number appears at top center near the top edge
+     * - House 2 number appears at top right corner
+     * - House 3 number appears at right edge upper area
+     * - House 4 number appears at right edge lower area
+     * - House 5 number appears at bottom right corner
+     * - House 6 number appears at bottom edge right of center
+     * - House 7 number appears at bottom center
+     * - House 8 number appears at bottom edge left of center
+     * - House 9 number appears at bottom left corner
+     * - House 10 number appears at left edge lower area
+     * - House 11 number appears at left edge upper area
+     * - House 12 number appears at top left corner
      */
     private fun getHouseNumberPosition(
         houseNum: Int,
@@ -484,46 +628,47 @@ class ChartRenderer {
     ): Offset {
         val right = left + chartSize
         val bottom = top + chartSize
-        val offset = chartSize * 0.05f
-        val eighthW = chartSize / 8
-        val eighthH = chartSize / 8
+        // Use consistent margin from edges
+        val margin = chartSize * 0.04f
+        val quarterW = chartSize / 4
+        val quarterH = chartSize / 4
 
         return when (houseNum) {
-            // House 1: Top center - place number at top edge
-            1 -> Offset(centerX, top + offset * 1.5f)
+            // House 1: Top center - placed at top edge, center
+            1 -> Offset(centerX, top + margin * 2)
 
-            // House 2: Top right corner - place at corner area
-            2 -> Offset(right - offset * 1.5f, top + offset * 1.5f)
+            // House 2: Top right corner - placed near the top-right corner
+            2 -> Offset(right - margin * 2, top + margin * 2)
 
-            // House 3: Right side upper - place at right edge
-            3 -> Offset(right - offset, centerY - eighthH * 1.5f)
+            // House 3: Right side upper - placed at right edge, above center
+            3 -> Offset(right - margin * 1.5f, centerY - quarterH * 0.5f)
 
-            // House 4: Right side lower - place at right edge
-            4 -> Offset(right - offset, centerY + eighthH * 1.5f)
+            // House 4: Right side lower - placed at right edge, below center
+            4 -> Offset(right - margin * 1.5f, centerY + quarterH * 0.5f)
 
-            // House 5: Bottom right corner - place at corner area
-            5 -> Offset(right - offset * 1.5f, bottom - offset * 1.5f)
+            // House 5: Bottom right corner - placed near the bottom-right corner
+            5 -> Offset(right - margin * 2, bottom - margin * 2)
 
-            // House 6: Bottom center right - place at bottom edge
-            6 -> Offset(centerX + eighthW * 1.5f, bottom - offset * 1.5f)
+            // House 6: Bottom center right - placed at bottom edge, right of center
+            6 -> Offset(centerX + quarterW * 0.5f, bottom - margin * 2)
 
-            // House 7: Bottom center - place number at bottom edge
-            7 -> Offset(centerX, bottom - offset * 1.5f)
+            // House 7: Bottom center - placed at bottom edge, center
+            7 -> Offset(centerX, bottom - margin * 2)
 
-            // House 8: Bottom center left - place at bottom edge
-            8 -> Offset(centerX - eighthW * 1.5f, bottom - offset * 1.5f)
+            // House 8: Bottom center left - placed at bottom edge, left of center
+            8 -> Offset(centerX - quarterW * 0.5f, bottom - margin * 2)
 
-            // House 9: Bottom left corner - place at corner area
-            9 -> Offset(left + offset * 1.5f, bottom - offset * 1.5f)
+            // House 9: Bottom left corner - placed near the bottom-left corner
+            9 -> Offset(left + margin * 2, bottom - margin * 2)
 
-            // House 10: Left side lower - place at left edge
-            10 -> Offset(left + offset, centerY + eighthH * 1.5f)
+            // House 10: Left side lower - placed at left edge, below center
+            10 -> Offset(left + margin * 1.5f, centerY + quarterH * 0.5f)
 
-            // House 11: Left side upper - place at left edge
-            11 -> Offset(left + offset, centerY - eighthH * 1.5f)
+            // House 11: Left side upper - placed at left edge, above center
+            11 -> Offset(left + margin * 1.5f, centerY - quarterH * 0.5f)
 
-            // House 12: Top left corner - place at corner area
-            12 -> Offset(left + offset * 1.5f, top + offset * 1.5f)
+            // House 12: Top left corner - placed near the top-left corner
+            12 -> Offset(left + margin * 2, top + margin * 2)
 
             else -> Offset(centerX, centerY)
         }
@@ -532,12 +677,21 @@ class ChartRenderer {
     /**
      * Draw planets positioned within a house with degree superscripts and status indicators
      * Layout adjusts based on number of planets to prevent overlap
+     *
+     * Status indicators (matching AstroSage exactly):
+     * - * : Retrograde
+     * - ^ : Combust (too close to Sun)
+     * - ¤ : Vargottama (same sign in D1 and D9)
+     * - ↑ : Exalted
+     * - ↓ : Debilitated
      */
     private fun DrawScope.drawPlanetsInHouse(
         planets: List<PlanetPosition>,
         houseCenter: Offset,
         size: Float,
-        houseNum: Int
+        houseNum: Int,
+        chart: VedicChart? = null,
+        sunPosition: PlanetPosition? = null
     ) {
         val textSize = size * 0.032f
         val lineHeight = size * 0.042f
@@ -551,11 +705,30 @@ class ChartRenderer {
             val degree = (planet.longitude % 30.0).toInt()
             val degreeSuper = toSuperscript(degree)
 
-            // Build status indicators matching AstroSage style
+            // Build status indicators matching AstroSage style exactly
+            // Order: Retrograde*, Combust^, Vargottama¤, Exalted↑, Debilitated↓
             val statusIndicators = buildString {
-                if (planet.isRetrograde) append("*")
-                if (isExalted(planet.planet, planet.sign)) append("\u2191") // ↑ for exalted
-                if (isDebilitated(planet.planet, planet.sign)) append("\u2193") // ↓ for debilitated
+                // 1. Retrograde indicator
+                if (planet.isRetrograde) append(SYMBOL_RETROGRADE)
+
+                // 2. Exalted indicator (↑) - takes priority over debilitated
+                if (isExalted(planet.planet, planet.sign)) {
+                    append(SYMBOL_EXALTED)
+                }
+                // 3. Debilitated indicator (↓)
+                else if (isDebilitated(planet.planet, planet.sign)) {
+                    append(SYMBOL_DEBILITATED)
+                }
+
+                // 4. Combust indicator (^) - only if chart context available
+                if (chart != null && isCombust(planet, sunPosition)) {
+                    append(SYMBOL_COMBUST)
+                }
+
+                // 5. Vargottama indicator (¤) - only if chart context available
+                if (chart != null && isVargottama(planet, chart)) {
+                    append(SYMBOL_VARGOTTAMA)
+                }
             }
 
             val displayText = "$abbrev$degreeSuper$statusIndicators"
@@ -669,5 +842,116 @@ class ChartRenderer {
         size: Float
     ) {
         drawNorthIndianChart(drawScope, chart, size, "Lagna")
+    }
+
+    /**
+     * Draw a legend showing the meaning of each status symbol
+     * This matches the AstroSage legend style
+     *
+     * Legend items:
+     * - * Retrograde
+     * - ^ Combust
+     * - ¤ Vargottama
+     * - ↑ Exalted
+     * - ↓ Debilitated
+     */
+    fun DrawScope.drawChartLegend(
+        chartBottom: Float,
+        chartLeft: Float,
+        chartWidth: Float,
+        textSize: Float
+    ) {
+        val legendY = chartBottom + textSize * 1.5f
+        val legendItems = listOf(
+            Pair("$SYMBOL_RETROGRADE Retrograde", HOUSE_NUMBER_COLOR),
+            Pair("$SYMBOL_COMBUST Combust", HOUSE_NUMBER_COLOR),
+            Pair("$SYMBOL_VARGOTTAMA Vargottama", HOUSE_NUMBER_COLOR),
+            Pair("$SYMBOL_EXALTED Exalted", HOUSE_NUMBER_COLOR),
+            Pair("$SYMBOL_DEBILITATED Debilitated", HOUSE_NUMBER_COLOR)
+        )
+
+        // Calculate spacing for legend items
+        val totalItems = legendItems.size
+        val itemWidth = chartWidth / totalItems
+
+        legendItems.forEachIndexed { index, (text, color) ->
+            val xPos = chartLeft + (index * itemWidth) + (itemWidth / 2)
+            drawTextCentered(
+                text = text,
+                position = Offset(xPos, legendY),
+                textSize = textSize * 0.8f,
+                color = color,
+                isBold = false
+            )
+        }
+    }
+
+    /**
+     * Draw a complete chart with legend included
+     * This is the recommended method for displaying charts with symbol explanations
+     *
+     * @param drawScope The drawing scope
+     * @param chart The Vedic chart data
+     * @param size The total size available (chart will use most of this, legend takes the rest)
+     * @param chartTitle Optional title for the chart
+     * @param showLegend Whether to display the symbol legend below the chart
+     */
+    fun drawChartWithLegend(
+        drawScope: DrawScope,
+        chart: VedicChart,
+        size: Float,
+        chartTitle: String = "Lagna",
+        showLegend: Boolean = true
+    ) {
+        with(drawScope) {
+            // Reserve space for legend if needed
+            val legendHeight = if (showLegend) size * 0.08f else 0f
+            val chartSize = size - legendHeight
+
+            // Draw the main chart
+            drawNorthIndianChart(this, chart, chartSize, chartTitle)
+
+            // Draw the legend if requested
+            if (showLegend) {
+                val padding = chartSize * 0.02f
+                val chartBottom = chartSize - padding
+                val chartLeft = padding
+                val chartWidth = chartSize - (padding * 2)
+                val textSize = chartSize * 0.028f
+
+                // Draw legend background
+                drawRect(
+                    color = BACKGROUND_COLOR,
+                    topLeft = Offset(0f, chartSize),
+                    size = Size(size, legendHeight)
+                )
+
+                // Draw legend items
+                drawChartLegend(
+                    chartBottom = chartSize,
+                    chartLeft = padding,
+                    chartWidth = chartWidth,
+                    textSize = textSize
+                )
+            }
+        }
+    }
+
+    /**
+     * Draw a Lagna marker ("La") in house 1 to indicate the ascendant
+     * This matches AstroSage style where "La" is shown in the first house
+     */
+    private fun DrawScope.drawLagnaMarker(
+        houseCenter: Offset,
+        size: Float
+    ) {
+        val textSize = size * 0.035f
+        drawTextCentered(
+            text = "La",
+            position = Offset(houseCenter.x, houseCenter.y - size * 0.05f),
+            textSize = textSize,
+            color = LAGNA_COLOR,
+            isBold = true
+        )
     }
 }

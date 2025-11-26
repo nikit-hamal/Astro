@@ -563,12 +563,14 @@ private fun ChartTabContent(
                                 )
                             } else {
                                 currentChartData?.let {
+                                    // Pass original chart for vargottama and combust status checking
                                     chartRenderer.drawDivisionalChart(
                                         drawScope = this,
                                         planetPositions = it.planetPositions,
                                         ascendantLongitude = it.ascendantLongitude,
                                         size = size.minDimension,
-                                        chartTitle = chartInfo.third
+                                        chartTitle = chartInfo.third,
+                                        originalChart = chart
                                     )
                                 }
                             }
@@ -624,8 +626,16 @@ private fun ChartTabContent(
 }
 
 @Composable
+/**
+ * Chart legend matching AstroSage symbols:
+ * - * Retrograde
+ * - ^ Combust
+ * - ¤ Vargottama
+ * - ↑ Exalted
+ * - ↓ Debilitated
+ */
 private fun ChartLegend() {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
@@ -633,11 +643,25 @@ private fun ChartLegend() {
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        LegendItem("*", "Retrograde")
-        LegendItem("\u2191", "Exalted")
-        LegendItem("\u2193", "Debilitated")
+        // First row: Retrograde, Combust, Vargottama
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            LegendItem("*", "Retrograde")
+            LegendItem("^", "Combust")
+            LegendItem("\u00A4", "Vargottama")
+        }
+        // Second row: Exalted, Debilitated
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            LegendItem("\u2191", "Exalted")
+            LegendItem("\u2193", "Debilitated")
+        }
     }
 }
 
