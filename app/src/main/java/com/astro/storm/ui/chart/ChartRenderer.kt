@@ -170,7 +170,7 @@ class ChartRenderer {
             Planet.JUPITER -> sign == ZodiacSign.CAPRICORN
             Planet.VENUS -> sign == ZodiacSign.VIRGO
             Planet.SATURN -> sign == ZodiacSign.ARIES
-            Planet.RAHU -> sign == ZodiacSign.SCORPIO || sign == ZodiacSign.SAGITTARIARIUS
+            Planet.RAHU -> sign == ZodiacSign.SCORPIO || sign == ZodiacSign.SAGITTARIUS
             Planet.KETU -> sign == ZodiacSign.TAURUS || sign == ZodiacSign.GEMINI
             else -> false
         }

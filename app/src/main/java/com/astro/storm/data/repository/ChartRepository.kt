@@ -97,6 +97,8 @@ class ChartRepository(private val chartDao: ChartDao) {
                     minutes = obj.getDouble("minutes"),
                     seconds = obj.getDouble("seconds"),
                     isRetrograde = obj.getBoolean("isRetrograde"),
+                    isCombust = false, // Not stored, calculated dynamically
+                    isVargottama = false, // Not stored, calculated dynamically
                     nakshatra = Nakshatra.valueOf(obj.getString("nakshatra")),
                     nakshatraPada = obj.getInt("nakshatraPada"),
                     house = obj.getInt("house")
