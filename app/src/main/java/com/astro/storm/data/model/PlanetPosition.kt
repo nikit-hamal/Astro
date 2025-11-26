@@ -14,6 +14,8 @@ data class PlanetPosition(
     val minutes: Double,
     val seconds: Double,
     val isRetrograde: Boolean,
+    val isCombust: Boolean,
+    val isVargottama: Boolean,
     val nakshatra: Nakshatra,
     val nakshatraPada: Int,
     val house: Int
