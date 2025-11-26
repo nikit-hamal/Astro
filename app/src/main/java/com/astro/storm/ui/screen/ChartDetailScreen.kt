@@ -41,9 +41,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.astro.storm.data.model.PlanetPosition
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.ephemeris.*
 import com.astro.storm.ui.chart.ChartRenderer
+import com.astro.storm.ui.components.*
 import com.astro.storm.ui.viewmodel.ChartUiState
 import com.astro.storm.ui.viewmodel.ChartViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -64,6 +66,8 @@ private val AccentTeal = Color(0xFF4DB6AC)
 private val AccentPurple = Color(0xFF9575CD)
 private val AccentRose = Color(0xFFE57373)
 private val AccentBlue = Color(0xFF64B5F6)
+private val AccentGreen = Color(0xFF81C784)
+private val AccentOrange = Color(0xFFFFB74D)
 private val TextPrimary = Color(0xFFF5F5F5)
 private val TextSecondary = Color(0xFFB0B0B0)
 private val TextMuted = Color(0xFF757575)
@@ -72,6 +76,19 @@ private val SuccessColor = Color(0xFF81C784)
 private val WarningColor = Color(0xFFFFB74D)
 private val ErrorColor = Color(0xFFE57373)
 private val ChartBackground = Color(0xFF1A1512)
+
+// Planet colors
+private val planetColors = mapOf(
+    com.astro.storm.data.model.Planet.SUN to Color(0xFFD2691E),
+    com.astro.storm.data.model.Planet.MOON to Color(0xFFDC143C),
+    com.astro.storm.data.model.Planet.MARS to Color(0xFFDC143C),
+    com.astro.storm.data.model.Planet.MERCURY to Color(0xFF228B22),
+    com.astro.storm.data.model.Planet.JUPITER to Color(0xFFDAA520),
+    com.astro.storm.data.model.Planet.VENUS to Color(0xFF9370DB),
+    com.astro.storm.data.model.Planet.SATURN to Color(0xFF4169E1),
+    com.astro.storm.data.model.Planet.RAHU to Color(0xFF8B0000),
+    com.astro.storm.data.model.Planet.KETU to Color(0xFF8B0000)
+)
 
 // Navigation tabs
 enum class ChartTab(val title: String, val icon: ImageVector) {
@@ -98,6 +115,15 @@ fun ChartDetailScreen(
     var currentChart by remember { mutableStateOf<VedicChart?>(null) }
     var selectedTab by remember { mutableStateOf(ChartTab.CHART) }
 
+    // Dialog states
+    var showFullScreenChart by remember { mutableStateOf(false) }
+    var fullScreenChartTitle by remember { mutableStateOf("Lagna") }
+    var fullScreenDivisionalData by remember { mutableStateOf<DivisionalChartData?>(null) }
+    var showShadbalaDialog by remember { mutableStateOf(false) }
+    var selectedPlanetPosition by remember { mutableStateOf<PlanetPosition?>(null) }
+    var selectedNakshatra by remember { mutableStateOf<Pair<com.astro.storm.data.model.Nakshatra, Int>?>(null) }
+    var selectedHouse by remember { mutableStateOf<Int?>(null) }
+
     val permissionsState = rememberMultiplePermissionsState(
         permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             listOf(android.Manifest.permission.READ_MEDIA_IMAGES)
@@ -122,6 +148,58 @@ fun ChartDetailScreen(
                 viewModel.resetState()
             }
             else -> {}
+        }
+    }
+
+    // Show dialogs
+    val displayChart = currentChart ?: (uiState as? ChartUiState.Success)?.chart
+
+    if (showFullScreenChart && displayChart != null) {
+        FullScreenChartDialog(
+            chart = displayChart,
+            chartRenderer = chartRenderer,
+            chartTitle = fullScreenChartTitle,
+            divisionalChartData = fullScreenDivisionalData,
+            onDismiss = { showFullScreenChart = false }
+        )
+    }
+
+    if (showShadbalaDialog && displayChart != null) {
+        ShadbalaDialog(
+            chart = displayChart,
+            onDismiss = { showShadbalaDialog = false }
+        )
+    }
+
+    selectedPlanetPosition?.let { position ->
+        displayChart?.let { chart ->
+            PlanetDetailDialog(
+                planetPosition = position,
+                chart = chart,
+                onDismiss = { selectedPlanetPosition = null }
+            )
+        }
+    }
+
+    selectedNakshatra?.let { (nakshatra, pada) ->
+        NakshatraDetailDialog(
+            nakshatra = nakshatra,
+            pada = pada,
+            onDismiss = { selectedNakshatra = null }
+        )
+    }
+
+    selectedHouse?.let { houseNum ->
+        displayChart?.let { chart ->
+            val houseCusp = if (houseNum <= chart.houseCusps.size) chart.houseCusps[houseNum - 1] else 0.0
+            val planetsInHouse = chart.planetPositions.filter { it.house == houseNum }
+            HouseDetailDialog(
+                houseNumber = houseNum,
+                houseCusp = houseCusp,
+                planetsInHouse = planetsInHouse,
+                chart = chart,
+                onDismiss = { selectedHouse = null }
+            )
         }
     }
 
@@ -166,6 +244,9 @@ fun ChartDetailScreen(
                             )
                         }
                     }
+                },
+                onShadbala = {
+                    showShadbalaDialog = true
                 }
             )
         },
@@ -176,8 +257,6 @@ fun ChartDetailScreen(
             )
         }
     ) { paddingValues ->
-        val displayChart = currentChart ?: (uiState as? ChartUiState.Success)?.chart
-
         when {
             uiState is ChartUiState.Loading && displayChart == null -> {
                 Box(
@@ -202,8 +281,23 @@ fun ChartDetailScreen(
                     label = "tab_content"
                 ) { tab ->
                     when (tab) {
-                        ChartTab.CHART -> ChartTabContent(displayChart, chartRenderer, context)
-                        ChartTab.PLANETS -> PlanetsTabContent(displayChart)
+                        ChartTab.CHART -> ChartTabContent(
+                            chart = displayChart,
+                            chartRenderer = chartRenderer,
+                            context = context,
+                            onChartClick = { title, divisionalData ->
+                                fullScreenChartTitle = title
+                                fullScreenDivisionalData = divisionalData
+                                showFullScreenChart = true
+                            },
+                            onPlanetClick = { selectedPlanetPosition = it },
+                            onHouseClick = { selectedHouse = it }
+                        )
+                        ChartTab.PLANETS -> PlanetsTabContent(
+                            chart = displayChart,
+                            onPlanetClick = { selectedPlanetPosition = it },
+                            onNakshatraClick = { nakshatra, pada -> selectedNakshatra = nakshatra to pada }
+                        )
                         ChartTab.DASHAS -> DashasTabContent(displayChart)
                         ChartTab.ASPECTS -> AspectsTabContent(displayChart)
                         ChartTab.PANCHANGA -> PanchangaTabContent(displayChart, context)
@@ -234,7 +328,8 @@ private fun ChartTopBar(
     chartName: String,
     onNavigateBack: () -> Unit,
     onExport: () -> Unit,
-    onCopy: () -> Unit
+    onCopy: () -> Unit,
+    onShadbala: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -257,6 +352,14 @@ private fun ChartTopBar(
             }
         },
         actions = {
+            // Shadbala button
+            IconButton(onClick = onShadbala) {
+                Icon(
+                    Icons.Outlined.TrendingUp,
+                    contentDescription = "Shadbala",
+                    tint = AccentGold
+                )
+            }
             IconButton(onClick = onCopy) {
                 Icon(
                     Icons.Default.ContentCopy,
@@ -298,7 +401,7 @@ private fun ChartBottomNavigation(
                         modifier = Modifier.size(if (selectedTab == tab) 26.dp else 24.dp)
                     )
                 },
-                label = null, // Icons only - no text labels
+                label = null,
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
                 colors = NavigationBarItemDefaults.colors(
@@ -317,7 +420,10 @@ private fun ChartBottomNavigation(
 private fun ChartTabContent(
     chart: VedicChart,
     chartRenderer: ChartRenderer,
-    context: android.content.Context
+    context: android.content.Context,
+    onChartClick: (String, DivisionalChartData?) -> Unit,
+    onPlanetClick: (PlanetPosition) -> Unit,
+    onHouseClick: (Int) -> Unit
 ) {
     val divisionalCharts = remember(chart) {
         DivisionalChartCalculator.calculateAllDivisionalCharts(chart)
@@ -328,7 +434,7 @@ private fun ChartTabContent(
     // Get current chart data based on selection
     val currentChartData = remember(selectedChartType, divisionalCharts) {
         when (selectedChartType) {
-            "D1" -> null // Lagna chart uses the main chart data
+            "D1" -> null
             "D2" -> divisionalCharts.find { it.chartType == DivisionalChartType.D2_HORA }
             "D3" -> divisionalCharts.find { it.chartType == DivisionalChartType.D3_DREKKANA }
             "D4" -> divisionalCharts.find { it.chartType == DivisionalChartType.D4_CHATURTHAMSA }
@@ -380,10 +486,14 @@ private fun ChartTabContent(
             )
         }
 
-        // Main chart display
+        // Main chart display - CLICKABLE for full-screen view
         item {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onChartClick(chartInfo.first, currentChartData)
+                    },
                 shape = RoundedCornerShape(16.dp),
                 color = CardBackground
             ) {
@@ -411,17 +521,26 @@ private fun ChartTabContent(
                                 )
                             }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = AccentGold.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = chartInfo.third,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AccentGold,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Fullscreen,
+                                contentDescription = "View fullscreen",
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = AccentGold.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = chartInfo.third,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentGold,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
                         }
                     }
 
@@ -456,19 +575,39 @@ private fun ChartTabContent(
                         }
                     }
 
-                    // Legend for status indicators
+                    // Legend and tap hint
                     Spacer(modifier = Modifier.height(12.dp))
                     ChartLegend()
+
+                    // Tap hint
+                    Text(
+                        text = "Tap chart to view fullscreen with download option",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    )
                 }
             }
         }
 
-        // Chart Details - Planetary positions for selected chart
+        // Chart Details - Planetary positions for selected chart - CLICKABLE
         item {
             ChartDetailsCard(
                 chart = chart,
                 currentChartData = currentChartData,
-                selectedChartType = selectedChartType
+                selectedChartType = selectedChartType,
+                onPlanetClick = onPlanetClick
+            )
+        }
+
+        // House cusps - CLICKABLE
+        item {
+            HouseCuspsCard(
+                chart = chart,
+                onHouseClick = onHouseClick
             )
         }
 
@@ -526,7 +665,8 @@ private fun LegendItem(symbol: String, label: String) {
 private fun ChartDetailsCard(
     chart: VedicChart,
     currentChartData: DivisionalChartData?,
-    selectedChartType: String
+    selectedChartType: String,
+    onPlanetClick: (PlanetPosition) -> Unit
 ) {
     val planetPositions = if (selectedChartType == "D1") {
         chart.planetPositions
@@ -557,57 +697,61 @@ private fun ChartDetailsCard(
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "Tap for details",
+                    fontSize = 11.sp,
+                    color = TextMuted
+                )
             }
 
             // Ascendant info
             if (selectedChartType == "D1") {
                 val ascSign = com.astro.storm.data.model.ZodiacSign.fromLongitude(chart.ascendant)
                 val ascDegree = chart.ascendant % 30.0
-                PlanetPositionRow(
-                    name = "Ascendant",
-                    sign = ascSign.displayName,
-                    degree = "${ascDegree.toInt()}°",
-                    house = "1",
-                    isRetrograde = false,
-                    color = AccentGold
-                )
-                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
-            } else {
-                currentChartData?.let { data ->
-                    val ascSign = com.astro.storm.data.model.ZodiacSign.fromLongitude(data.ascendantLongitude)
-                    val ascDegree = data.ascendantLongitude % 30.0
-                    PlanetPositionRow(
-                        name = "Ascendant",
-                        sign = ascSign.displayName,
-                        degree = "${ascDegree.toInt()}°",
-                        house = "1",
-                        isRetrograde = false,
-                        color = AccentGold
-                    )
-                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = AccentGold.copy(alpha = 0.1f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ascendant (Lagna)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AccentGold
+                        )
+                        Row {
+                            Text(
+                                text = ascSign.displayName,
+                                fontSize = 13.sp,
+                                color = AccentTeal
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${ascDegree.toInt()}°",
+                                fontSize = 13.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
                 }
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Planet positions
+            // Planet positions - CLICKABLE
             planetPositions.forEach { position ->
-                PlanetPositionRow(
-                    name = position.planet.displayName,
-                    sign = position.sign.displayName,
-                    degree = "${(position.longitude % 30.0).toInt()}°",
-                    house = position.house.toString(),
-                    isRetrograde = position.isRetrograde,
-                    color = when (position.planet) {
-                        com.astro.storm.data.model.Planet.SUN -> Color(0xFFD2691E)
-                        com.astro.storm.data.model.Planet.MOON -> Color(0xFFDC143C)
-                        com.astro.storm.data.model.Planet.MARS -> Color(0xFFDC143C)
-                        com.astro.storm.data.model.Planet.MERCURY -> Color(0xFF228B22)
-                        com.astro.storm.data.model.Planet.JUPITER -> Color(0xFFDAA520)
-                        com.astro.storm.data.model.Planet.VENUS -> Color(0xFF9370DB)
-                        com.astro.storm.data.model.Planet.SATURN -> Color(0xFF4169E1)
-                        com.astro.storm.data.model.Planet.RAHU -> Color(0xFF8B0000)
-                        com.astro.storm.data.model.Planet.KETU -> Color(0xFF8B0000)
-                        else -> TextPrimary
-                    }
+                ClickablePlanetPositionRow(
+                    position = position,
+                    onClick = { onPlanetClick(position) }
                 )
             }
         }
@@ -615,72 +759,225 @@ private fun ChartDetailsCard(
 }
 
 @Composable
-private fun PlanetPositionRow(
-    name: String,
-    sign: String,
-    degree: String,
-    house: String,
-    isRetrograde: Boolean,
-    color: Color
+private fun ClickablePlanetPositionRow(
+    position: PlanetPosition,
+    onClick: () -> Unit
 ) {
-    Row(
+    val color = planetColors[position.planet] ?: TextPrimary
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 2.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(6.dp),
+        color = Color.Transparent
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(color, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = position.planet.displayName,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = color,
+                    modifier = Modifier.width(70.dp)
+                )
+                if (position.isRetrograde) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = WarningColor.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Text(
+                            text = "R",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningColor,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
+
             Text(
-                text = name,
+                text = position.sign.displayName,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = color,
-                modifier = Modifier.width(70.dp)
+                color = AccentTeal,
+                modifier = Modifier.width(80.dp),
+                textAlign = TextAlign.Center
             )
-            if (isRetrograde) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = WarningColor.copy(alpha = 0.2f),
-                    modifier = Modifier.padding(start = 4.dp)
-                ) {
+
+            Text(
+                text = "${(position.longitude % 30.0).toInt()}°",
+                fontSize = 13.sp,
+                color = TextSecondary,
+                modifier = Modifier.width(40.dp),
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "H${position.house}",
+                fontSize = 12.sp,
+                color = TextMuted,
+                modifier = Modifier.width(30.dp),
+                textAlign = TextAlign.End
+            )
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "View details",
+                tint = TextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HouseCuspsCard(
+    chart: VedicChart,
+    onHouseClick: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.Home,
+                        contentDescription = null,
+                        tint = AccentPurple,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "R",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = WarningColor,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        text = "House Cusps",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Tap house for details",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val rotation by animateFloatAsState(
+                        targetValue = if (expanded) 180f else 0f,
+                        label = "rotation"
+                    )
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.rotate(rotation)
                     )
                 }
             }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    // Display houses in a 2x6 grid
+                    for (row in 0..5) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val house1 = row + 1
+                            val house2 = row + 7
+
+                            HouseCuspItem(
+                                houseNumber = house1,
+                                cusp = chart.houseCusps.getOrNull(house1 - 1) ?: 0.0,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onHouseClick(house1) }
+                            )
+                            HouseCuspItem(
+                                houseNumber = house2,
+                                cusp = chart.houseCusps.getOrNull(house2 - 1) ?: 0.0,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onHouseClick(house2) }
+                            )
+                        }
+                        if (row < 5) Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+            }
         }
+    }
+}
 
-        Text(
-            text = sign,
-            fontSize = 13.sp,
-            color = AccentTeal,
-            modifier = Modifier.width(80.dp),
-            textAlign = TextAlign.Center
-        )
+@Composable
+private fun HouseCuspItem(
+    houseNumber: Int,
+    cusp: Double,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val sign = com.astro.storm.data.model.ZodiacSign.fromLongitude(cusp)
+    val degreeInSign = cusp % 30.0
 
-        Text(
-            text = degree,
-            fontSize = 13.sp,
-            color = TextSecondary,
-            modifier = Modifier.width(40.dp),
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = "H$house",
-            fontSize = 12.sp,
-            color = TextMuted,
-            modifier = Modifier.width(30.dp),
-            textAlign = TextAlign.End
-        )
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        color = CardBackgroundElevated
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "H$houseNumber",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = AccentGold
+            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = sign.abbreviation,
+                    fontSize = 12.sp,
+                    color = AccentTeal
+                )
+                Text(
+                    text = "${degreeInSign.toInt()}°",
+                    fontSize = 11.sp,
+                    color = TextMuted
+                )
+            }
+        }
     }
 }
 
@@ -689,7 +986,6 @@ private fun ChartTypeSelector(
     selectedType: String,
     onTypeSelected: (String) -> Unit
 ) {
-    // All available divisional charts
     val chartTypes = listOf(
         "D1" to "Lagna",
         "D2" to "Hora",
@@ -845,7 +1141,11 @@ private fun AstronomicalDataCard(chart: VedicChart) {
 // ============ PLANETS TAB ============
 
 @Composable
-private fun PlanetsTabContent(chart: VedicChart) {
+private fun PlanetsTabContent(
+    chart: VedicChart,
+    onPlanetClick: (PlanetPosition) -> Unit,
+    onNakshatraClick: (com.astro.storm.data.model.Nakshatra, Int) -> Unit
+) {
     val conditionAnalysis = remember(chart) {
         RetrogradeCombustionCalculator.analyzePlanetaryConditions(chart)
     }
@@ -860,10 +1160,15 @@ private fun PlanetsTabContent(chart: VedicChart) {
             PlanetaryStatusSummary(conditionAnalysis)
         }
 
-        // Individual planet cards
+        // Individual planet cards - CLICKABLE
         items(chart.planetPositions) { position ->
             val condition = conditionAnalysis.planetConditions.find { it.planet == position.planet }
-            PlanetDetailCard(position, condition)
+            PlanetDetailCard(
+                position = position,
+                condition = condition,
+                onClick = { onPlanetClick(position) },
+                onNakshatraClick = { onNakshatraClick(position.nakshatra, position.nakshatraPada) }
+            )
         }
     }
 }
@@ -927,11 +1232,15 @@ private fun StatusBadge(count: Int, label: String, color: Color) {
 
 @Composable
 private fun PlanetDetailCard(
-    position: com.astro.storm.data.model.PlanetPosition,
-    condition: RetrogradeCombustionCalculator.PlanetCondition?
+    position: PlanetPosition,
+    condition: RetrogradeCombustionCalculator.PlanetCondition?,
+    onClick: () -> Unit,
+    onNakshatraClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         color = CardBackground
     ) {
@@ -943,12 +1252,22 @@ private fun PlanetDetailCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = position.planet.symbol,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (position.isRetrograde) WarningColor else AccentGold
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                planetColors[position.planet] ?: AccentGold,
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = position.planet.symbol,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1000,9 +1319,13 @@ private fun PlanetDetailCard(
             HorizontalDivider(color = DividerColor)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Nakshatra info
+            // Nakshatra info - CLICKABLE
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNakshatraClick() }
+                    .background(CardBackgroundElevated, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
@@ -1015,11 +1338,19 @@ private fun PlanetDetailCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Lord", fontSize = 11.sp, color = TextMuted)
-                    Text(
-                        text = position.nakshatra.ruler.displayName,
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = position.nakshatra.ruler.displayName,
+                            fontSize = 13.sp,
+                            color = AccentGold
+                        )
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 
@@ -1047,6 +1378,16 @@ private fun PlanetDetailCard(
                     }
                 }
             }
+
+            // Tap for more hint
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Tap for detailed analysis & predictions",
+                fontSize = 11.sp,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
