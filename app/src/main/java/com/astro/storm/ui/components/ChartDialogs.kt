@@ -132,12 +132,14 @@ fun FullScreenChartDialog(
                         .padding(16.dp)
                 ) {
                     if (divisionalChartData != null) {
+                        // Pass original chart for vargottama and combust status checking
                         chartRenderer.drawDivisionalChart(
                             drawScope = this,
                             planetPositions = divisionalChartData.planetPositions,
                             ascendantLongitude = divisionalChartData.ascendantLongitude,
                             size = size.minDimension,
-                            chartTitle = chartTitle
+                            chartTitle = chartTitle,
+                            originalChart = chart
                         )
                     } else {
                         chartRenderer.drawNorthIndianChart(
