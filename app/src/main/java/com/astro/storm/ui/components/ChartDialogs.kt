@@ -518,7 +518,7 @@ private fun ShadbalaCard(shadbala: ShadbalaCalculator.PlanetaryShadbala) {
     DialogCard(title = "Strength Analysis (Shadbala)", icon = Icons.Outlined.TrendingUp) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Overall strength bar
-            val strengthPercentage = (shadbala.percentageOfRequired / 150f).coerceIn(0f, 1f)
+            val strengthPercentage = (shadbala.percentageOfRequired / 150.0).coerceIn(0.0, 1.0).toFloat()
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -588,7 +588,7 @@ private fun StrengthRow(label: String, value: Double, maxValue: Double) {
         Text(text = label, fontSize = 13.sp, color = TextSecondary, modifier = Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
-                progress = { (value / maxValue).coerceIn(0f, 1f).toFloat() },
+                progress = { (value / maxValue).coerceIn(0.0, 1.0).toFloat() },
                 modifier = Modifier
                     .width(60.dp)
                     .height(4.dp)
@@ -1318,7 +1318,7 @@ private fun PlanetStrengthCard(shadbala: ShadbalaCalculator.PlanetaryShadbala) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Progress bar
-            val progress = (shadbala.percentageOfRequired / 150f).coerceIn(0f, 1f)
+            val progress = (shadbala.percentageOfRequired / 150.0).coerceIn(0.0, 1.0).toFloat()
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
