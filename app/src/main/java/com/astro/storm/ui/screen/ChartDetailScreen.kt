@@ -360,21 +360,24 @@ private fun ChartTopBar(
                 Icon(
                     Icons.Outlined.TrendingUp,
                     contentDescription = "Shadbala",
-                    tint = AccentGold
+                    tint = AccentGold,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             IconButton(onClick = onCopy) {
                 Icon(
                     Icons.Default.ContentCopy,
                     contentDescription = "Copy",
-                    tint = TextSecondary
+                    tint = TextSecondary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             IconButton(onClick = onExport) {
                 Icon(
                     Icons.Default.Download,
                     contentDescription = "Export",
-                    tint = TextSecondary
+                    tint = TextSecondary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
