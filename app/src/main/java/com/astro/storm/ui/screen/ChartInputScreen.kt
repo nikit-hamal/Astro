@@ -15,7 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -160,9 +160,17 @@ fun ChartInputScreen(
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.Outlined.Clear,
+                        contentDescription = "Cancel",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
                 Text(
                     text = "AstroStorm Chart",
                     fontSize = 24.sp,
@@ -170,14 +178,6 @@ fun ChartInputScreen(
                     color = TextPrimary,
                     letterSpacing = 0.5.sp
                 )
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.Outlined.History,
-                        contentDescription = "History",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))

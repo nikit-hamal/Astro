@@ -34,22 +34,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Setup Keystore
-        run: |
-          mkdir -p keystore
-          # Generate keystore if it doesn't exist in repository
-          if [ ! -f keystore/release.jks ]; then
-            keytool -genkeypair -v \
-              -keystore keystore/release.jks \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -alias astrostorm \
-              -storepass astrostorm2024 \
-              -keypass astrostorm2024 \
-              -dname "CN=AstroStorm, OU=Development, O=AstroStorm, L=Unknown, ST=Unknown, C=US"
-          fi
-
       - name: Download Swiss Ephemeris Library
         run: |
           mkdir -p app/libs
