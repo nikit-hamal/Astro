@@ -222,24 +222,15 @@ class ChartRenderer {
 
     /**
      * Check if a planet is Vargottama (same sign in D1 Rashi and D9 Navamsa charts)
-     * This is a highly favorable position in Vedic astrology
-     *
-     * @param planet The planet position in the Rashi chart
-     * @param chart The full Vedic chart for calculating Navamsa
-     * @return true if the planet is in the same sign in both D1 and D9
      */
     private fun isVargottama(planet: PlanetPosition, chart: VedicChart): Boolean {
-        // Calculate navamsa position for this planet
         val navamsaLongitude = calculateNavamsaLongitude(planet.longitude)
         val navamsaSign = ZodiacSign.fromLongitude(navamsaLongitude)
-
-        // Vargottama = same sign in D1 (Rashi) and D9 (Navamsa)
         return planet.sign == navamsaSign
     }
 
     /**
      * Calculate Navamsa longitude for a given longitude
-     * Navamsa divides each sign into 9 equal parts of 3°20' each
      */
     private fun calculateNavamsaLongitude(longitude: Double): Double {
         val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
@@ -265,35 +256,16 @@ class ChartRenderer {
 
     /**
      * Check if a planet is combust (too close to the Sun)
-     * Combustion weakens a planet's significations
-     *
-     * Combustion orbs (degrees from Sun):
-     * - Moon: 12°
-     * - Mars: 17°
-     * - Mercury: 14° (12° if retrograde)
-     * - Jupiter: 11°
-     * - Venus: 10° (8° if retrograde)
-     * - Saturn: 15°
-     *
-     * @param planet The planet position to check
-     * @param sunPosition The Sun's position (null if Sun itself)
-     * @return true if the planet is combust
      */
     private fun isCombust(planet: PlanetPosition, sunPosition: PlanetPosition?): Boolean {
-        // Sun itself cannot be combust
         if (planet.planet == Planet.SUN) return false
-
-        // Rahu, Ketu, and outer planets don't combust
         if (planet.planet in listOf(Planet.RAHU, Planet.KETU, Planet.URANUS, Planet.NEPTUNE, Planet.PLUTO)) {
             return false
         }
-
-        // Need Sun's position to check combustion
         if (sunPosition == null) return false
 
         val angularDistance = calculateAngularDistance(planet.longitude, sunPosition.longitude)
 
-        // Get combustion orb for this planet
         val combustionOrb = when (planet.planet) {
             Planet.MOON -> 12.0
             Planet.MARS -> 17.0
@@ -309,7 +281,6 @@ class ChartRenderer {
 
     /**
      * Calculate the angular distance between two longitudes
-     * Handles the wrap-around at 360°
      */
     private fun calculateAngularDistance(long1: Double, long2: Double): Double {
         val diff = abs(long1 - long2)
@@ -318,7 +289,6 @@ class ChartRenderer {
 
     /**
      * Draw a professional North Indian style Vedic chart
-     * Matches the layout and style of traditional Vedic astrology software
      */
     fun drawNorthIndianChart(
         drawScope: DrawScope,
@@ -336,13 +306,13 @@ class ChartRenderer {
             val centerX = (left + right) / 2
             val centerY = (top + bottom) / 2
 
-            // Draw background
+            // Background
             drawRect(
                 color = BACKGROUND_COLOR,
                 size = Size(size, size)
             )
 
-            // Draw outer square border with thicker stroke
+            // Outer square
             drawRect(
                 color = BORDER_COLOR,
                 topLeft = Offset(left, top),
@@ -350,31 +320,24 @@ class ChartRenderer {
                 style = Stroke(width = 3f)
             )
 
-            // Draw the internal structure - North Indian diamond pattern
-            // This creates the classic 12-house layout with a central diamond
-
-            // Key points for the diamond structure
+            // Midpoints (diamond)
             val midTop = Offset(centerX, top)
             val midRight = Offset(right, centerY)
             val midBottom = Offset(centerX, bottom)
             val midLeft = Offset(left, centerY)
 
-            // Draw the central diamond by connecting midpoints of sides
-            // This creates the iconic North Indian chart diamond in the center
+            // Central diamond
             drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
 
-            // Draw the corner-to-corner diagonals (full diagonals, not to center)
-            // These divide the corner triangles into 2 houses each
+            // Corner diagonals
             drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
 
-            // Get ascendant sign number for mapping houses to signs
             val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
 
-            // Draw house numbers and planets with full chart context for status checking
             drawAllHouseContents(
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, chart.planetPositions, size, chart
@@ -383,7 +346,7 @@ class ChartRenderer {
     }
 
     /**
-     * Draw a divisional chart (D9, D10, D60, etc.) with planet positions
+     * Draw a divisional chart (D9, D10, etc.)
      */
     fun drawDivisionalChart(
         drawScope: DrawScope,
@@ -403,13 +366,11 @@ class ChartRenderer {
             val centerX = (left + right) / 2
             val centerY = (top + bottom) / 2
 
-            // Draw background
             drawRect(
                 color = BACKGROUND_COLOR,
                 size = Size(size, size)
             )
 
-            // Draw outer square border
             drawRect(
                 color = BORDER_COLOR,
                 topLeft = Offset(left, top),
@@ -417,31 +378,21 @@ class ChartRenderer {
                 style = Stroke(width = 3f)
             )
 
-            // Draw the internal structure - North Indian diamond pattern
-            // This creates the classic 12-house layout with a central diamond
-
-            // Key points for the diamond structure
             val midTop = Offset(centerX, top)
             val midRight = Offset(right, centerY)
             val midBottom = Offset(centerX, bottom)
             val midLeft = Offset(left, centerY)
 
-            // Draw the central diamond by connecting midpoints of sides
-            // This creates the iconic North Indian chart diamond in the center
             drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
 
-            // Draw the corner-to-corner diagonals (full diagonals, not to center)
-            // These divide the corner triangles into 2 houses each
             drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
             drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
 
-            // Get ascendant sign
             val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
 
-            // Draw house contents (pass original chart for status checking if available)
             drawAllHouseContents(
                 left, top, chartSize, centerX, centerY,
                 ascendantSign, planetPositions, size, originalChart
@@ -451,44 +402,6 @@ class ChartRenderer {
 
     /**
      * Draw all house contents including house numbers and planets
-     *
-     * North Indian Chart House Layout (matching AstroSage exactly):
-     * The chart is a square with:
-     * - Central diamond (connecting midpoints of sides)
-     * - Two corner-to-corner diagonals
-     * This creates 12 triangular/diamond houses.
-     *
-     * Standard North Indian layout (AstroSage reference):
-     *
-     *       ┌────────────────────────────────────────┐
-     *       │\              2               /        │
-     *       │  \                          /    1    │
-     *       │ 3  \                      /           │
-     *       │      \                  /         12  │
-     *       │        \              /               │
-     *       │─────────\────────────/────────────────│
-     *       │           \        /                  │
-     *       │    4       \      /       11          │
-     *       │             \    /                    │
-     *       │──────────────\  /─────────────────────│
-     *       │               \/                      │
-     *       │               /\                      │
-     *       │    5        /    \        10          │
-     *       │           /        \                  │
-     *       │─────────/────────────\────────────────│
-     *       │       /       7        \       9      │
-     *       │  6  /                    \            │
-     *       │   /                        \     8    │
-     *       │ /                            \        │
-     *       └────────────────────────────────────────┘
-     *
-     * House 1 is at TOP-CENTER diamond (Lagna/Ascendant)
-     * House 7 is at BOTTOM-CENTER diamond (opposite to Lagna)
-     * Houses proceed COUNTER-CLOCKWISE from House 1:
-     * 1 (top center) -> 2 (top-left corner) -> 3 (left upper) -> 4 (left center) ->
-     * 5 (left lower) -> 6 (bottom-left corner) -> 7 (bottom center) ->
-     * 8 (bottom-right corner) -> 9 (right lower) -> 10 (right center) ->
-     * 11 (right upper) -> 12 (top-right corner) -> back to 1
      */
     private fun DrawScope.drawAllHouseContents(
         left: Float,
@@ -504,18 +417,14 @@ class ChartRenderer {
         val right = left + chartSize
         val bottom = top + chartSize
 
-        // Group planets by house
         val planetsByHouse = planetPositions.groupBy { it.house }
-
-        // Get Sun position for combustion checking
         val sunPosition = chart?.planetPositions?.find { it.planet == Planet.SUN }
 
-        // Draw each house (1-12)
         for (houseNum in 1..12) {
             val houseCenter = getHousePlanetCenter(houseNum, left, top, chartSize, centerX, centerY)
             val numberPos = getHouseNumberPosition(houseNum, left, top, chartSize, centerX, centerY)
 
-            // Draw house number
+            // House number
             drawTextCentered(
                 text = houseNum.toString(),
                 position = numberPos,
@@ -524,13 +433,9 @@ class ChartRenderer {
                 isBold = false
             )
 
-            // Draw Lagna marker in house 1 (matching AstroSage style)
-            // The "La" marker indicates the Ascendant/Lagna and is placed
-            // above the planet positions in House 1
+            // Lagna marker in House 1: position it slightly above the planet center
             if (houseNum == 1) {
-                // Position Lagna marker above where planets would be drawn
-                // in House 1 (top center diamond)
-                val lagnaMarkerPos = Offset(centerX, top + chartSize * 0.15f)
+                val lagnaMarkerPos = Offset(houseCenter.x, houseCenter.y - size * 0.06f)
                 drawTextCentered(
                     text = "La",
                     position = lagnaMarkerPos,
@@ -540,7 +445,7 @@ class ChartRenderer {
                 )
             }
 
-            // Draw planets in this house
+            // Planets
             val planets = planetsByHouse[houseNum] ?: emptyList()
             if (planets.isNotEmpty()) {
                 drawPlanetsInHouse(planets, houseCenter, size, houseNum, chart, sunPosition)
@@ -549,46 +454,7 @@ class ChartRenderer {
     }
 
     /**
-     * Get the center position for placing planets in each house
-     * This determines where planet text appears within each house section
-     *
-     * North Indian chart layout (matching AstroSage exactly):
-     * Houses flow COUNTER-CLOCKWISE from House 1:
-     *
-     *       ┌────────────────────────────────────────┐
-     *       │\              2               /        │
-     *       │  \                          /    1    │
-     *       │ 3  \                      /           │
-     *       │      \                  /         12  │
-     *       │        \              /               │
-     *       │─────────\────────────/────────────────│
-     *       │           \        /                  │
-     *       │    4       \      /       11          │
-     *       │             \    /                    │
-     *       │──────────────\  /─────────────────────│
-     *       │               \/                      │
-     *       │               /\                      │
-     *       │    5        /    \        10          │
-     *       │           /        \                  │
-     *       │─────────/────────────\────────────────│
-     *       │       /       7        \       9      │
-     *       │  6  /                    \            │
-     *       │   /                        \     8    │
-     *       │ /                            \        │
-     *       └────────────────────────────────────────┘
-     *
-     * - House 1:  Top center diamond (Lagna/Ascendant)
-     * - House 2:  Top-left corner triangle
-     * - House 3:  Left side upper triangle
-     * - House 4:  Left center diamond
-     * - House 5:  Left side lower triangle
-     * - House 6:  Bottom-left corner triangle
-     * - House 7:  Bottom center diamond
-     * - House 8:  Bottom-right corner triangle
-     * - House 9:  Right side lower triangle
-     * - House 10: Right center diamond
-     * - House 11: Right side upper triangle
-     * - House 12: Top-right corner triangle
+     * Center for planets in each house
      */
     private fun getHousePlanetCenter(
         houseNum: Int,
@@ -601,102 +467,32 @@ class ChartRenderer {
         val right = left + chartSize
         val bottom = top + chartSize
 
-        // Calculate key geometric points for precise positioning
-        // The chart is divided by:
-        // 1. Central diamond connecting midpoints of sides
-        // 2. Two corner-to-corner diagonals
-
-        // Midpoints of the sides (diamond vertices)
-        val midTop = top
-        val midBottom = bottom
-        val midLeft = left
-        val midRight = right
-
-        // For triangular houses (corners), position text in the centroid area
-        // For diamond houses (center sides), position text in the center of the diamond
-
-        // Offsets to position text within each house section
-        // These are tuned to match AstroSage visual layout
-        val cornerOffset = chartSize * 0.18f  // Distance from corner for corner triangles
-        val sideOffset = chartSize * 0.15f    // Distance from edge for side triangles
-        val diamondOffset = chartSize * 0.25f // Distance from center for diamond houses
+        val cornerOffset = chartSize * 0.18f
+        val sideOffset = chartSize * 0.15f
+        val diamondOffset = chartSize * 0.25f
 
         return when (houseNum) {
-            // House 1: Top center diamond - Lagna/Ascendant position
-            // This is the upper portion of the central diamond
             1 -> Offset(centerX, top + diamondOffset)
-
-            // House 2: Top-left corner triangle
-            // Small triangle at top-left, above the main diagonal
             2 -> Offset(left + cornerOffset, top + cornerOffset)
-
-            // House 3: Left side upper triangle
-            // Triangle on left side, between top corner and center
             3 -> Offset(left + sideOffset, centerY - chartSize * 0.18f)
-
-            // House 4: Left center diamond
-            // The left portion of the central diamond
             4 -> Offset(left + diamondOffset, centerY)
-
-            // House 5: Left side lower triangle
-            // Triangle on left side, between center and bottom corner
             5 -> Offset(left + sideOffset, centerY + chartSize * 0.18f)
-
-            // House 6: Bottom-left corner triangle
-            // Small triangle at bottom-left, below the main diagonal
             6 -> Offset(left + cornerOffset, bottom - cornerOffset)
-
-            // House 7: Bottom center diamond
-            // The lower portion of the central diamond (opposite House 1)
             7 -> Offset(centerX, bottom - diamondOffset)
-
-            // House 8: Bottom-right corner triangle
-            // Small triangle at bottom-right, below the main diagonal
             8 -> Offset(right - cornerOffset, bottom - cornerOffset)
-
-            // House 9: Right side lower triangle
-            // Triangle on right side, between center and bottom corner
             9 -> Offset(right - sideOffset, centerY + chartSize * 0.18f)
-
-            // House 10: Right center diamond
-            // The right portion of the central diamond (opposite House 4)
             10 -> Offset(right - diamondOffset, centerY)
-
-            // House 11: Right side upper triangle
-            // Triangle on right side, between top corner and center
             11 -> Offset(right - sideOffset, centerY - chartSize * 0.18f)
-
-            // House 12: Top-right corner triangle
-            // Small triangle at top-right, above the main diagonal
             12 -> Offset(right - cornerOffset, top + cornerOffset)
-
             else -> Offset(centerX, centerY)
         }
     }
 
     /**
-     * Get position for house number (placed INSIDE each house section)
-     * Numbers are placed strategically to match AstroSage layout
+     * Position for house number (INSIDE each house)
      *
-     * In AstroSage reference, house numbers are placed INSIDE each house section,
-     * typically in a position that doesn't interfere with planet text.
-     * For corner triangles: numbers near the diagonal edge
-     * For side triangles: numbers near the outer edge
-     * For diamond houses: numbers near the edge of the diamond
-     *
-     * House number positions (matching AstroSage):
-     * - House 1:  Inside top center diamond, near top-right edge
-     * - House 2:  Inside top-left corner, near the diagonal
-     * - House 3:  Inside left upper triangle, near outer edge
-     * - House 4:  Inside left center diamond, near left edge
-     * - House 5:  Inside left lower triangle, near outer edge
-     * - House 6:  Inside bottom-left corner, near the diagonal
-     * - House 7:  Inside bottom center diamond, near bottom edge
-     * - House 8:  Inside bottom-right corner, near the diagonal
-     * - House 9:  Inside right lower triangle, near outer edge
-     * - House 10: Inside right center diamond, near right edge
-     * - House 11: Inside right upper triangle, near outer edge
-     * - House 12: Inside top-right corner, near the diagonal
+     * FIX: House 1 number is now centered in the top diamond instead of being
+     * pushed toward the diagonal between houses 1 and 10.
      */
     private fun getHouseNumberPosition(
         houseNum: Int,
@@ -709,102 +505,46 @@ class ChartRenderer {
         val right = left + chartSize
         val bottom = top + chartSize
 
-        // Offsets tuned to place numbers inside houses without overlapping planets
-        // Numbers should be closer to the edges/diagonals than planet positions
-        val cornerNumberOffset = chartSize * 0.12f  // For corner triangles - closer to diagonal
-        val sideNumberOffset = chartSize * 0.08f    // For side triangles - near outer edge
-        val diamondNumberOffset = chartSize * 0.38f // For diamond houses - near outer edge of diamond
+        val cornerNumberOffset = chartSize * 0.12f
+        val sideNumberOffset = chartSize * 0.08f
+        val diamondNumberOffset = chartSize * 0.38f
 
         return when (houseNum) {
-            // House 1: Inside top center diamond, positioned toward right side
-            // Number "1" goes near the top-right portion of the diamond
-            1 -> Offset(centerX + chartSize * 0.12f, top + diamondNumberOffset)
+            // House 1 now centered horizontally in the diamond
+            1 -> Offset(centerX, top + diamondNumberOffset)
 
-            // House 2: Inside top-left corner triangle
-            // Number "2" goes in the upper portion, near center of triangle
             2 -> Offset(centerX - chartSize * 0.18f, top + cornerNumberOffset)
-
-            // House 3: Inside left side upper triangle
-            // Number "3" goes near the outer left edge
             3 -> Offset(left + sideNumberOffset, centerY - chartSize * 0.28f)
-
-            // House 4: Inside left center diamond
-            // Number "4" goes near the left edge of diamond
             4 -> Offset(left + diamondNumberOffset - chartSize * 0.12f, centerY + chartSize * 0.08f)
-
-            // House 5: Inside left side lower triangle
-            // Number "5" goes near the outer left edge
             5 -> Offset(left + sideNumberOffset, centerY + chartSize * 0.28f)
-
-            // House 6: Inside bottom-left corner triangle
-            // Number "6" goes in the lower portion, near center of triangle
             6 -> Offset(centerX - chartSize * 0.18f, bottom - cornerNumberOffset)
-
-            // House 7: Inside bottom center diamond
-            // Number "7" goes near the bottom edge of diamond
             7 -> Offset(centerX, bottom - diamondNumberOffset)
-
-            // House 8: Inside bottom-right corner triangle
-            // Number "8" goes in the lower portion, near center of triangle
             8 -> Offset(centerX + chartSize * 0.18f, bottom - cornerNumberOffset)
-
-            // House 9: Inside right side lower triangle
-            // Number "9" goes near the outer right edge
             9 -> Offset(right - sideNumberOffset, centerY + chartSize * 0.28f)
-
-            // House 10: Inside right center diamond
-            // Number "10" goes near the right edge of diamond
             10 -> Offset(right - diamondNumberOffset + chartSize * 0.12f, centerY + chartSize * 0.08f)
-
-            // House 11: Inside right side upper triangle
-            // Number "11" goes near the outer right edge
             11 -> Offset(right - sideNumberOffset, centerY - chartSize * 0.28f)
-
-            // House 12: Inside top-right corner triangle
-            // Number "12" goes in the upper portion, near center of triangle
             12 -> Offset(centerX + chartSize * 0.18f, top + cornerNumberOffset)
-
             else -> Offset(centerX, centerY)
         }
     }
 
-    /**
-     * Determine if a house is a corner triangle (smaller area) or a diamond/side house (larger area)
-     *
-     * Corner triangles (smaller, need tighter layout): Houses 2, 6, 8, 12
-     * Side triangles (medium size): Houses 3, 5, 9, 11
-     * Diamond houses (larger, more space): Houses 1, 4, 7, 10
-     */
     private fun getHouseType(houseNum: Int): HouseType {
         return when (houseNum) {
-            1, 4, 7, 10 -> HouseType.DIAMOND      // Center diamonds - largest area
-            3, 5, 9, 11 -> HouseType.SIDE         // Side triangles - medium area
-            2, 6, 8, 12 -> HouseType.CORNER       // Corner triangles - smallest area
+            1, 4, 7, 10 -> HouseType.DIAMOND
+            3, 5, 9, 11 -> HouseType.SIDE
+            2, 6, 8, 12 -> HouseType.CORNER
             else -> HouseType.DIAMOND
         }
     }
 
     private enum class HouseType {
-        DIAMOND,    // Center diamond houses (1, 4, 7, 10) - more space
-        SIDE,       // Side triangle houses (3, 5, 9, 11) - medium space
-        CORNER      // Corner triangle houses (2, 6, 8, 12) - least space
+        DIAMOND,
+        SIDE,
+        CORNER
     }
 
     /**
-     * Draw planets positioned within a house with degree superscripts and status indicators
-     * Layout adjusts based on number of planets AND house type to prevent overlap
-     *
-     * Status indicators (matching AstroSage exactly):
-     * - * : Retrograde
-     * - ^ : Combust (too close to Sun)
-     * - ¤ : Vargottama (same sign in D1 and D9)
-     * - ↑ : Exalted
-     * - ↓ : Debilitated
-     *
-     * Layout strategy:
-     * - Diamond houses (1, 4, 7, 10): Can fit more planets vertically
-     * - Side triangle houses (3, 5, 9, 11): Medium capacity
-     * - Corner triangle houses (2, 6, 8, 12): Tightest layout needed
+     * Draw planets in a house
      */
     private fun DrawScope.drawPlanetsInHouse(
         planets: List<PlanetPosition>,
@@ -814,7 +554,6 @@ class ChartRenderer {
         chart: VedicChart? = null,
         sunPosition: PlanetPosition? = null
     ) {
-        // Adaptive text size based on house type and planet count
         val houseType = getHouseType(houseNum)
         val baseTextSize = size * 0.032f
         val textSize = when {
@@ -824,31 +563,24 @@ class ChartRenderer {
             else -> baseTextSize
         }
 
-        // Adaptive line height based on house type
         val baseLineHeight = size * 0.042f
         val lineHeight = when (houseType) {
-            HouseType.CORNER -> baseLineHeight * 0.85f  // Tighter spacing for corners
+            HouseType.CORNER -> baseLineHeight * 0.85f
             HouseType.SIDE -> baseLineHeight * 0.9f
             HouseType.DIAMOND -> baseLineHeight
         }
 
-        // Determine column layout based on planet count and house type
         val columns = when {
-            // Corner houses: use 2 columns for 3+ planets
             houseType == HouseType.CORNER && planets.size >= 3 -> 2
-            // Side houses: use 2 columns for 4+ planets
             houseType == HouseType.SIDE && planets.size >= 4 -> 2
-            // Diamond houses: use 2 columns for 5+ planets
             houseType == HouseType.DIAMOND && planets.size >= 5 -> 2
-            // Default: single column
             else -> 1
         }
 
         val itemsPerColumn = (planets.size + columns - 1) / columns
 
-        // Column spacing adapted to house type
         val columnSpacing = when (houseType) {
-            HouseType.CORNER -> size * 0.055f   // Tighter for corners
+            HouseType.CORNER -> size * 0.055f
             HouseType.SIDE -> size * 0.065f
             HouseType.DIAMOND -> size * 0.08f
         }
@@ -858,27 +590,16 @@ class ChartRenderer {
             val degree = (planet.longitude % 30.0).toInt()
             val degreeSuper = toSuperscript(degree)
 
-            // Build status indicators matching AstroSage style exactly
-            // Order: Retrograde*, Exalted↑/Debilitated↓, Combust^, Vargottama¤
             val statusIndicators = buildString {
-                // 1. Retrograde indicator
                 if (planet.isRetrograde) append(SYMBOL_RETROGRADE)
-
-                // 2. Exalted indicator (↑) - takes priority over debilitated
                 if (isExalted(planet.planet, planet.sign)) {
                     append(SYMBOL_EXALTED)
-                }
-                // 3. Debilitated indicator (↓)
-                else if (isDebilitated(planet.planet, planet.sign)) {
+                } else if (isDebilitated(planet.planet, planet.sign)) {
                     append(SYMBOL_DEBILITATED)
                 }
-
-                // 4. Combust indicator (^) - only if chart context available
                 if (chart != null && isCombust(planet, sunPosition)) {
                     append(SYMBOL_COMBUST)
                 }
-
-                // 5. Vargottama indicator (¤) - only if chart context available
                 if (chart != null && isVargottama(planet, chart)) {
                     append(SYMBOL_VARGOTTAMA)
                 }
@@ -886,7 +607,6 @@ class ChartRenderer {
 
             val displayText = "$abbrev$degreeSuper$statusIndicators"
 
-            // Calculate position based on layout
             val col = if (columns > 1) index % columns else 0
             val row = index / columns
 
@@ -913,7 +633,7 @@ class ChartRenderer {
     }
 
     /**
-     * Draw centered text using native canvas
+     * Draw centered text
      */
     private fun DrawScope.drawTextCentered(
         text: String,
@@ -940,9 +660,6 @@ class ChartRenderer {
         }
     }
 
-    /**
-     * Create a bitmap from the Lagna chart for export (high resolution)
-     */
     fun createChartBitmap(chart: VedicChart, width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
@@ -960,9 +677,6 @@ class ChartRenderer {
         return bitmap
     }
 
-    /**
-     * Create a bitmap from a divisional chart for export (high resolution)
-     */
     fun createDivisionalChartBitmap(
         planetPositions: List<PlanetPosition>,
         ascendantLongitude: Double,
@@ -986,9 +700,6 @@ class ChartRenderer {
         return bitmap
     }
 
-    /**
-     * Backward compatible method for legacy code
-     */
     fun drawSouthIndianChart(
         drawScope: DrawScope,
         chart: VedicChart,
@@ -997,17 +708,6 @@ class ChartRenderer {
         drawNorthIndianChart(drawScope, chart, size, "Lagna")
     }
 
-    /**
-     * Draw a legend showing the meaning of each status symbol
-     * This matches the AstroSage legend style
-     *
-     * Legend items:
-     * - * Retrograde
-     * - ^ Combust
-     * - ¤ Vargottama
-     * - ↑ Exalted
-     * - ↓ Debilitated
-     */
     fun DrawScope.drawChartLegend(
         chartBottom: Float,
         chartLeft: Float,
@@ -1023,7 +723,6 @@ class ChartRenderer {
             Pair("$SYMBOL_DEBILITATED Debilitated", HOUSE_NUMBER_COLOR)
         )
 
-        // Calculate spacing for legend items
         val totalItems = legendItems.size
         val itemWidth = chartWidth / totalItems
 
@@ -1039,16 +738,6 @@ class ChartRenderer {
         }
     }
 
-    /**
-     * Draw a complete chart with legend included
-     * This is the recommended method for displaying charts with symbol explanations
-     *
-     * @param drawScope The drawing scope
-     * @param chart The Vedic chart data
-     * @param size The total size available (chart will use most of this, legend takes the rest)
-     * @param chartTitle Optional title for the chart
-     * @param showLegend Whether to display the symbol legend below the chart
-     */
     fun drawChartWithLegend(
         drawScope: DrawScope,
         chart: VedicChart,
@@ -1057,14 +746,11 @@ class ChartRenderer {
         showLegend: Boolean = true
     ) {
         with(drawScope) {
-            // Reserve space for legend if needed
             val legendHeight = if (showLegend) size * 0.08f else 0f
             val chartSize = size - legendHeight
 
-            // Draw the main chart
             drawNorthIndianChart(this, chart, chartSize, chartTitle)
 
-            // Draw the legend if requested
             if (showLegend) {
                 val padding = chartSize * 0.02f
                 val chartBottom = chartSize - padding
@@ -1072,14 +758,12 @@ class ChartRenderer {
                 val chartWidth = chartSize - (padding * 2)
                 val textSize = chartSize * 0.028f
 
-                // Draw legend background
                 drawRect(
                     color = BACKGROUND_COLOR,
                     topLeft = Offset(0f, chartSize),
                     size = Size(size, legendHeight)
                 )
 
-                // Draw legend items
                 drawChartLegend(
                     chartBottom = chartSize,
                     chartLeft = padding,
@@ -1090,10 +774,6 @@ class ChartRenderer {
         }
     }
 
-    /**
-     * Draw a Lagna marker ("La") in house 1 to indicate the ascendant
-     * This matches AstroSage style where "La" is shown in the first house
-     */
     private fun DrawScope.drawLagnaMarker(
         houseCenter: Offset,
         size: Float
