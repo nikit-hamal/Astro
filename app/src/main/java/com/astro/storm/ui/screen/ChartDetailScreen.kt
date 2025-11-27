@@ -77,7 +77,7 @@ private val WarningColor = Color(0xFFFFB74D)
 private val ErrorColor = Color(0xFFE57373)
 private val ChartBackground = Color(0xFF1A1512)
 
-// Planet colors
+// Planet colors (including outer planets for complete coverage)
 private val planetColors = mapOf(
     com.astro.storm.data.model.Planet.SUN to Color(0xFFD2691E),
     com.astro.storm.data.model.Planet.MOON to Color(0xFFDC143C),
@@ -87,7 +87,10 @@ private val planetColors = mapOf(
     com.astro.storm.data.model.Planet.VENUS to Color(0xFF9370DB),
     com.astro.storm.data.model.Planet.SATURN to Color(0xFF4169E1),
     com.astro.storm.data.model.Planet.RAHU to Color(0xFF8B0000),
-    com.astro.storm.data.model.Planet.KETU to Color(0xFF8B0000)
+    com.astro.storm.data.model.Planet.KETU to Color(0xFF8B0000),
+    com.astro.storm.data.model.Planet.URANUS to Color(0xFF20B2AA),
+    com.astro.storm.data.model.Planet.NEPTUNE to Color(0xFF4682B4),
+    com.astro.storm.data.model.Planet.PLUTO to Color(0xFF800080)
 )
 
 // Navigation tabs

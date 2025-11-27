@@ -111,8 +111,9 @@ class SwissEphemerisEngine(context: Context) {
         val ascendant = ascmc[0]
         val midheaven = ascmc[1]
 
-        // Calculate planetary positions
-        val planetPositions = Planet.MAIN_PLANETS.map { planet ->
+        // Calculate planetary positions for all planets (including outer planets)
+        // This matches AstroSage's display which shows Uranus, Neptune, and Pluto
+        val planetPositions = Planet.ALL_PLANETS.map { planet ->
             calculatePlanetPosition(planet, julianDay, houseCusps)
         }
 
