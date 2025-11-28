@@ -2,6 +2,7 @@ package com.astro.storm.ui.viewmodel
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.astro.storm.data.local.ChartDatabase
@@ -121,11 +122,11 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Export chart as image
      */
-    fun exportChartImage(chart: VedicChart, fileName: String) {
+    fun exportChartImage(chart: VedicChart, fileName: String, density: Density) {
         viewModelScope.launch {
             try {
                 val bitmap = withContext(Dispatchers.Default) {
-                    chartRenderer.createChartBitmap(chart, 2048, 2048)
+                    chartRenderer.createChartBitmap(chart, 2048, 2048, density)
                 }
 
                 val result = ExportUtils.saveChartImage(getApplication(), bitmap, fileName)

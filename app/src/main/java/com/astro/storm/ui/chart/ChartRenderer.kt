@@ -78,13 +78,35 @@ import kotlin.math.min
  */
 class ChartRenderer {
 
+    // Named constants for geometry ratios
+    private val CORNER_CENTER_FRACTION = 0.18f
+    private val SIDE_VERTICAL_OFFSET_FRACTION = 0.18f
+    private val DIAMOND_PLANET_VERTICAL_FRACTION = 0.25f
+    private val DIAMOND_NUMBER_VERTICAL_FRACTION = 0.38f
+    private val SIDE_PLANET_HORIZONTAL_OFFSET_FRACTION = 0.15f
+    private val CORNER_NUMBER_OFFSET_FRACTION = 0.12f
+    private val SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION = 0.08f
+    private val SIDE_NUMBER_VERTICAL_OFFSET_FRACTION = 0.28f
+    private val DIAMOND_NUMBER_HORIZONTAL_OFFSET_FRACTION = 0.12f
+    private val DIAMOND_NUMBER_VERTICAL_OFFSET_FRACTION = 0.08f
+    private val CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION = 0.18f
+
+    private val textPaint = android.graphics.Paint().apply {
+        textAlign = android.graphics.Paint.Align.CENTER
+        isAntiAlias = true
+        isSubpixelText = true
+    }
+
+
     companion object {
+        // Typefaces for text rendering
+        private val TYPEFACE_NORMAL = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        private val TYPEFACE_BOLD = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+
         // Professional color palette matching traditional Vedic astrology software
         private val BACKGROUND_COLOR = Color(0xFFD4C4A8) // Warm parchment background
-        private val CHART_BACKGROUND = Color(0xFFD4C4A8)
         private val BORDER_COLOR = Color(0xFFB8860B) // Dark goldenrod for lines
         private val HOUSE_NUMBER_COLOR = Color(0xFF4A4A4A) // Dark gray for house numbers
-        private val TITLE_COLOR = Color(0xFF8B4513) // Saddle brown for title
 
         // Planet-specific colors matching AstroSage style
         private val SUN_COLOR = Color(0xFFD2691E) // Chocolate/orange for Sun
@@ -205,22 +227,6 @@ class ChartRenderer {
     }
 
     /**
-     * Check if planet is in own sign
-     */
-    private fun isOwnSign(planet: Planet, sign: ZodiacSign): Boolean {
-        return when (planet) {
-            Planet.SUN -> sign == ZodiacSign.LEO
-            Planet.MOON -> sign == ZodiacSign.CANCER
-            Planet.MARS -> sign == ZodiacSign.ARIES || sign == ZodiacSign.SCORPIO
-            Planet.MERCURY -> sign == ZodiacSign.GEMINI || sign == ZodiacSign.VIRGO
-            Planet.JUPITER -> sign == ZodiacSign.SAGITTARIUS || sign == ZodiacSign.PISCES
-            Planet.VENUS -> sign == ZodiacSign.TAURUS || sign == ZodiacSign.LIBRA
-            Planet.SATURN -> sign == ZodiacSign.CAPRICORN || sign == ZodiacSign.AQUARIUS
-            else -> false
-        }
-    }
-
-    /**
      * Check if a planet is Vargottama (same sign in D1 Rashi and D9 Navamsa charts)
      */
     private fun isVargottama(planet: PlanetPosition, chart: VedicChart): Boolean {
@@ -287,6 +293,59 @@ class ChartRenderer {
         return if (diff > 180.0) 360.0 - diff else diff
     }
 
+    private data class ChartFrame(
+        val left: Float,
+        val top: Float,
+        val size: Float,
+        val centerX: Float,
+        val centerY: Float
+    )
+
+    private fun DrawScope.drawNorthIndianFrame(
+        size: Float
+    ): ChartFrame {
+        val padding = size * 0.02f
+        val chartSize = size - (padding * 2)
+        val left = padding
+        val top = padding
+        val right = left + chartSize
+        val bottom = top + chartSize
+        val centerX = (left + right) / 2
+        val centerY = (top + bottom) / 2
+
+        // Background
+        drawRect(
+            color = BACKGROUND_COLOR,
+            size = Size(size, size)
+        )
+
+        // Outer square
+        drawRect(
+            color = BORDER_COLOR,
+            topLeft = Offset(left, top),
+            size = Size(chartSize, chartSize),
+            style = Stroke(width = 3f)
+        )
+
+        // Midpoints (diamond)
+        val midTop = Offset(centerX, top)
+        val midRight = Offset(right, centerY)
+        val midBottom = Offset(centerX, bottom)
+        val midLeft = Offset(left, centerY)
+
+        // Central diamond
+        drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
+        drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
+        drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
+        drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
+
+        // Corner diagonals
+        drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
+        drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
+
+        return ChartFrame(left, top, chartSize, centerX, centerY)
+    }
+
     /**
      * Draw a professional North Indian style Vedic chart
      */
@@ -297,50 +356,19 @@ class ChartRenderer {
         chartTitle: String = "Lagna"
     ) {
         with(drawScope) {
-            val padding = size * 0.02f
-            val chartSize = size - (padding * 2)
-            val left = padding
-            val top = padding
-            val right = left + chartSize
-            val bottom = top + chartSize
-            val centerX = (left + right) / 2
-            val centerY = (top + bottom) / 2
-
-            // Background
-            drawRect(
-                color = BACKGROUND_COLOR,
-                size = Size(size, size)
-            )
-
-            // Outer square
-            drawRect(
-                color = BORDER_COLOR,
-                topLeft = Offset(left, top),
-                size = Size(chartSize, chartSize),
-                style = Stroke(width = 3f)
-            )
-
-            // Midpoints (diamond)
-            val midTop = Offset(centerX, top)
-            val midRight = Offset(right, centerY)
-            val midBottom = Offset(centerX, bottom)
-            val midLeft = Offset(left, centerY)
-
-            // Central diamond
-            drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
-
-            // Corner diagonals
-            drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
-
+            val frame = drawNorthIndianFrame(size)
             val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
 
             drawAllHouseContents(
-                left, top, chartSize, centerX, centerY,
-                ascendantSign, chart.planetPositions, size, chart
+                left = frame.left,
+                top = frame.top,
+                chartSize = frame.size,
+                centerX = frame.centerX,
+                centerY = frame.centerY,
+                ascendantSign = ascendantSign,
+                planetPositions = chart.planetPositions,
+                size = size,
+                chart = chart
             )
         }
     }
@@ -357,47 +385,32 @@ class ChartRenderer {
         originalChart: VedicChart? = null
     ) {
         with(drawScope) {
-            val padding = size * 0.02f
-            val chartSize = size - (padding * 2)
-            val left = padding
-            val top = padding
-            val right = left + chartSize
-            val bottom = top + chartSize
-            val centerX = (left + right) / 2
-            val centerY = (top + bottom) / 2
-
-            drawRect(
-                color = BACKGROUND_COLOR,
-                size = Size(size, size)
-            )
-
-            drawRect(
-                color = BORDER_COLOR,
-                topLeft = Offset(left, top),
-                size = Size(chartSize, chartSize),
-                style = Stroke(width = 3f)
-            )
-
-            val midTop = Offset(centerX, top)
-            val midRight = Offset(right, centerY)
-            val midBottom = Offset(centerX, bottom)
-            val midLeft = Offset(left, centerY)
-
-            drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
-
-            drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
-            drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
-
+            val frame = drawNorthIndianFrame(size)
             val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
 
             drawAllHouseContents(
-                left, top, chartSize, centerX, centerY,
-                ascendantSign, planetPositions, size, originalChart
+                left = frame.left,
+                top = frame.top,
+                chartSize = frame.size,
+                centerX = frame.centerX,
+                centerY = frame.centerY,
+                ascendantSign = ascendantSign,
+                planetPositions = planetPositions,
+                size = size,
+                chart = originalChart
             )
         }
+    }
+
+    /**
+     * Converts a house index into a sign number, given the ascendant sign.
+     */
+    private fun signNumberForHouse(
+        houseNum: Int,
+        ascendantSign: ZodiacSign
+    ): Int {
+        // ZodiacSign.ordinal is assumed 0..11 = Aries..Pisces
+        return ((ascendantSign.ordinal + houseNum - 1) % 12) + 1
     }
 
     /**
@@ -412,7 +425,8 @@ class ChartRenderer {
         ascendantSign: ZodiacSign,
         planetPositions: List<PlanetPosition>,
         size: Float,
-        chart: VedicChart? = null
+        chart: VedicChart? = null,
+        showSignNumbers: Boolean = true
     ) {
         val right = left + chartSize
         val bottom = top + chartSize
@@ -425,8 +439,13 @@ class ChartRenderer {
             val numberPos = getHouseNumberPosition(houseNum, left, top, chartSize, centerX, centerY)
 
             // House number
+            val numberText = if (showSignNumbers) {
+                signNumberForHouse(houseNum, ascendantSign).toString()
+            } else {
+                houseNum.toString()
+            }
             drawTextCentered(
-                text = houseNum.toString(),
+                text = numberText,
                 position = numberPos,
                 textSize = size * 0.035f,
                 color = HOUSE_NUMBER_COLOR,
@@ -435,14 +454,7 @@ class ChartRenderer {
 
             // Lagna marker in House 1: position it slightly above the planet center
             if (houseNum == 1) {
-                val lagnaMarkerPos = Offset(houseCenter.x, houseCenter.y - size * 0.06f)
-                drawTextCentered(
-                    text = "La",
-                    position = lagnaMarkerPos,
-                    textSize = size * 0.035f,
-                    color = LAGNA_COLOR,
-                    isBold = true
-                )
+                drawLagnaMarker(houseCenter, size)
             }
 
             // Planets
@@ -467,23 +479,19 @@ class ChartRenderer {
         val right = left + chartSize
         val bottom = top + chartSize
 
-        val cornerOffset = chartSize * 0.18f
-        val sideOffset = chartSize * 0.15f
-        val diamondOffset = chartSize * 0.25f
-
         return when (houseNum) {
-            1 -> Offset(centerX, top + diamondOffset)
-            2 -> Offset(left + cornerOffset, top + cornerOffset)
-            3 -> Offset(left + sideOffset, centerY - chartSize * 0.18f)
-            4 -> Offset(left + diamondOffset, centerY)
-            5 -> Offset(left + sideOffset, centerY + chartSize * 0.18f)
-            6 -> Offset(left + cornerOffset, bottom - cornerOffset)
-            7 -> Offset(centerX, bottom - diamondOffset)
-            8 -> Offset(right - cornerOffset, bottom - cornerOffset)
-            9 -> Offset(right - sideOffset, centerY + chartSize * 0.18f)
-            10 -> Offset(right - diamondOffset, centerY)
-            11 -> Offset(right - sideOffset, centerY - chartSize * 0.18f)
-            12 -> Offset(right - cornerOffset, top + cornerOffset)
+            1 -> Offset(centerX, top + chartSize * DIAMOND_PLANET_VERTICAL_FRACTION)
+            2 -> Offset(left + chartSize * CORNER_CENTER_FRACTION, top + chartSize * CORNER_CENTER_FRACTION)
+            3 -> Offset(left + chartSize * SIDE_PLANET_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_VERTICAL_OFFSET_FRACTION)
+            4 -> Offset(left + chartSize * DIAMOND_PLANET_VERTICAL_FRACTION, centerY)
+            5 -> Offset(left + chartSize * SIDE_PLANET_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_VERTICAL_OFFSET_FRACTION)
+            6 -> Offset(left + chartSize * CORNER_CENTER_FRACTION, bottom - chartSize * CORNER_CENTER_FRACTION)
+            7 -> Offset(centerX, bottom - chartSize * DIAMOND_PLANET_VERTICAL_FRACTION)
+            8 -> Offset(right - chartSize * CORNER_CENTER_FRACTION, bottom - chartSize * CORNER_CENTER_FRACTION)
+            9 -> Offset(right - chartSize * SIDE_PLANET_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_VERTICAL_OFFSET_FRACTION)
+            10 -> Offset(right - chartSize * DIAMOND_PLANET_VERTICAL_FRACTION, centerY)
+            11 -> Offset(right - chartSize * SIDE_PLANET_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_VERTICAL_OFFSET_FRACTION)
+            12 -> Offset(right - chartSize * CORNER_CENTER_FRACTION, top + chartSize * CORNER_CENTER_FRACTION)
             else -> Offset(centerX, centerY)
         }
     }
@@ -505,25 +513,20 @@ class ChartRenderer {
         val right = left + chartSize
         val bottom = top + chartSize
 
-        val cornerNumberOffset = chartSize * 0.12f
-        val sideNumberOffset = chartSize * 0.08f
-        val diamondNumberOffset = chartSize * 0.38f
-
         return when (houseNum) {
             // House 1 now centered horizontally in the diamond
-            1 -> Offset(centerX, top + diamondNumberOffset)
-
-            2 -> Offset(centerX - chartSize * 0.18f, top + cornerNumberOffset)
-            3 -> Offset(left + sideNumberOffset, centerY - chartSize * 0.28f)
-            4 -> Offset(left + diamondNumberOffset - chartSize * 0.12f, centerY + chartSize * 0.08f)
-            5 -> Offset(left + sideNumberOffset, centerY + chartSize * 0.28f)
-            6 -> Offset(centerX - chartSize * 0.18f, bottom - cornerNumberOffset)
-            7 -> Offset(centerX, bottom - diamondNumberOffset)
-            8 -> Offset(centerX + chartSize * 0.18f, bottom - cornerNumberOffset)
-            9 -> Offset(right - sideNumberOffset, centerY + chartSize * 0.28f)
-            10 -> Offset(right - diamondNumberOffset + chartSize * 0.12f, centerY + chartSize * 0.08f)
-            11 -> Offset(right - sideNumberOffset, centerY - chartSize * 0.28f)
-            12 -> Offset(centerX + chartSize * 0.18f, top + cornerNumberOffset)
+            1 -> Offset(centerX, top + chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION)
+            2 -> Offset(centerX - chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            3 -> Offset(left + chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
+            4 -> Offset(left + chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION - chartSize * DIAMOND_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * DIAMOND_NUMBER_VERTICAL_OFFSET_FRACTION)
+            5 -> Offset(left + chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
+            6 -> Offset(centerX - chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            7 -> Offset(centerX, bottom - chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION)
+            8 -> Offset(centerX + chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            9 -> Offset(right - chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
+            10 -> Offset(right - chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION + chartSize * DIAMOND_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * DIAMOND_NUMBER_VERTICAL_OFFSET_FRACTION)
+            11 -> Offset(right - chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
+            12 -> Offset(centerX + chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
             else -> Offset(centerX, centerY)
         }
     }
@@ -643,30 +646,23 @@ class ChartRenderer {
         isBold: Boolean = false
     ) {
         drawContext.canvas.nativeCanvas.apply {
-            val paint = android.graphics.Paint().apply {
-                this.color = color.toArgb()
-                this.textSize = textSize
-                this.textAlign = android.graphics.Paint.Align.CENTER
-                this.typeface = Typeface.create(
-                    Typeface.SANS_SERIF,
-                    if (isBold) Typeface.BOLD else Typeface.NORMAL
-                )
-                this.isAntiAlias = true
-                this.isSubpixelText = true
-            }
-            val textHeight = paint.descent() - paint.ascent()
-            val textOffset = textHeight / 2 - paint.descent()
-            drawText(text, position.x, position.y + textOffset, paint)
+            textPaint.color = color.toArgb()
+            textPaint.textSize = textSize
+            textPaint.typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+
+            val textHeight = textPaint.descent() - textPaint.ascent()
+            val textOffset = textHeight / 2 - textPaint.descent()
+            drawText(text, position.x, position.y + textOffset, textPaint)
         }
     }
 
-    fun createChartBitmap(chart: VedicChart, width: Int, height: Int): Bitmap {
+    fun createChartBitmap(chart: VedicChart, width: Int, height: Int, density: Density): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
         val drawScope = CanvasDrawScope()
 
         drawScope.draw(
-            Density(1f),
+            density,
             LayoutDirection.Ltr,
             Canvas(canvas),
             Size(width.toFloat(), height.toFloat())
@@ -682,14 +678,15 @@ class ChartRenderer {
         ascendantLongitude: Double,
         chartTitle: String,
         width: Int,
-        height: Int
+        height: Int,
+        density: Density
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
         val drawScope = CanvasDrawScope()
 
         drawScope.draw(
-            Density(1f),
+            density,
             LayoutDirection.Ltr,
             Canvas(canvas),
             Size(width.toFloat(), height.toFloat())
@@ -700,6 +697,10 @@ class ChartRenderer {
         return bitmap
     }
 
+    /**
+     * Draws a South Indian style chart. Currently, this is a backward-compatibility alias
+     * to the North Indian renderer, as a true South Indian layout is not yet implemented.
+     */
     fun drawSouthIndianChart(
         drawScope: DrawScope,
         chart: VedicChart,
@@ -781,7 +782,7 @@ class ChartRenderer {
         val textSize = size * 0.035f
         drawTextCentered(
             text = "La",
-            position = Offset(houseCenter.x, houseCenter.y - size * 0.05f),
+            position = Offset(houseCenter.x, houseCenter.y - size * 0.06f),
             textSize = textSize,
             color = LAGNA_COLOR,
             isBold = true
