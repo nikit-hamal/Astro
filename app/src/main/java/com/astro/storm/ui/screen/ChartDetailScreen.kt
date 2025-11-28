@@ -592,7 +592,7 @@ private fun NatalContent(
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
-                    modifier = TabRowDefaults.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
                     color = AccentGold
                 )
             }
@@ -1674,7 +1674,7 @@ private fun PredictionsContent(
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
-                    modifier = TabRowDefaults.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
                     color = AccentGold
                 )
             }
