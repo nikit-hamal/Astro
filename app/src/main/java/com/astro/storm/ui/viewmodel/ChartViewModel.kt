@@ -2,6 +2,7 @@ package com.astro.storm.ui.viewmodel
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.astro.storm.data.local.ChartDatabase
@@ -118,7 +119,6 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-import androidx.compose.ui.unit.Density
     /**
      * Export chart as image
      */
