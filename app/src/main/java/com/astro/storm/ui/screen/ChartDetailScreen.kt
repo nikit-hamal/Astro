@@ -94,12 +94,14 @@ private val planetColors = mapOf(
     com.astro.storm.data.model.Planet.PLUTO to Color(0xFF800080)
 )
 
-// Navigation tabs
+// Navigation tabs - Extended with new features
 enum class ChartTab(val title: String, val icon: ImageVector) {
     CHART("Chart", Icons.Outlined.GridView),
     PLANETS("Planets", Icons.Outlined.Star),
+    YOGAS("Yogas", Icons.Outlined.AutoAwesome),
+    ASHTAKAVARGA("Ashtakavarga", Icons.Outlined.GridOn),
+    TRANSITS("Transits", Icons.Outlined.Schedule),
     DASHAS("Dashas", Icons.Outlined.Timeline),
-    ASPECTS("Aspects", Icons.Outlined.Hub),
     PANCHANGA("Panchanga", Icons.Outlined.WbSunny)
 }
 
@@ -144,7 +146,14 @@ fun ChartDetailScreen(
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is ChartUiState.Success -> currentChart = state.chart
+            is ChartUiState.Exporting -> {
+                snackbarHostState.showSnackbar(
+                    message = state.message,
+                    duration = SnackbarDuration.Indefinite
+                )
+            }
             is ChartUiState.Exported -> {
+                snackbarHostState.currentSnackbarData?.dismiss()
                 snackbarHostState.showSnackbar(
                     message = state.message,
                     duration = SnackbarDuration.Short
@@ -227,14 +236,46 @@ fun ChartDetailScreen(
             ChartTopBar(
                 chartName = currentChart?.birthData?.name ?: "Chart Details",
                 onNavigateBack = onNavigateBack,
-                onExport = {
+                onExportPdf = {
                     currentChart?.let { chart ->
                         if (permissionsState.allPermissionsGranted) {
-                            viewModel.exportChartImage(
-                                chart,
-                                "chart_${chart.birthData.name.replace(" ", "_")}_${System.currentTimeMillis()}",
-                                density
-                            )
+                            viewModel.exportChartToPdf(chart, density)
+                        } else {
+                            permissionsState.launchMultiplePermissionRequest()
+                        }
+                    }
+                },
+                onExportImage = {
+                    currentChart?.let { chart ->
+                        if (permissionsState.allPermissionsGranted) {
+                            viewModel.exportChartToImage(chart, density)
+                        } else {
+                            permissionsState.launchMultiplePermissionRequest()
+                        }
+                    }
+                },
+                onExportJson = {
+                    currentChart?.let { chart ->
+                        if (permissionsState.allPermissionsGranted) {
+                            viewModel.exportChartToJson(chart)
+                        } else {
+                            permissionsState.launchMultiplePermissionRequest()
+                        }
+                    }
+                },
+                onExportCsv = {
+                    currentChart?.let { chart ->
+                        if (permissionsState.allPermissionsGranted) {
+                            viewModel.exportChartToCsv(chart)
+                        } else {
+                            permissionsState.launchMultiplePermissionRequest()
+                        }
+                    }
+                },
+                onExportText = {
+                    currentChart?.let { chart ->
+                        if (permissionsState.allPermissionsGranted) {
+                            viewModel.exportChartToText(chart)
                         } else {
                             permissionsState.launchMultiplePermissionRequest()
                         }
@@ -304,8 +345,10 @@ fun ChartDetailScreen(
                             onPlanetClick = { selectedPlanetPosition = it },
                             onNakshatraClick = { nakshatra, pada -> selectedNakshatra = nakshatra to pada }
                         )
+                        ChartTab.YOGAS -> YogasTabContent(displayChart)
+                        ChartTab.ASHTAKAVARGA -> AshtakavargaTabContent(displayChart)
+                        ChartTab.TRANSITS -> TransitsTabContent(displayChart, context)
                         ChartTab.DASHAS -> DashasTabContent(displayChart)
-                        ChartTab.ASPECTS -> AspectsTabContent(displayChart)
                         ChartTab.PANCHANGA -> PanchangaTabContent(displayChart, context)
                     }
                 }
@@ -333,10 +376,16 @@ fun ChartDetailScreen(
 private fun ChartTopBar(
     chartName: String,
     onNavigateBack: () -> Unit,
-    onExport: () -> Unit,
+    onExportPdf: () -> Unit,
+    onExportImage: () -> Unit,
+    onExportJson: () -> Unit,
+    onExportCsv: () -> Unit,
+    onExportText: () -> Unit,
     onCopy: () -> Unit,
     onShadbala: () -> Unit
 ) {
+    var showExportMenu by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = {
             Text(
@@ -375,13 +424,113 @@ private fun ChartTopBar(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            IconButton(onClick = onExport) {
-                Icon(
-                    Icons.Default.Download,
-                    contentDescription = "Export",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(24.dp)
-                )
+            // Export dropdown menu
+            Box {
+                IconButton(onClick = { showExportMenu = true }) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = "Export",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showExportMenu,
+                    onDismissRequest = { showExportMenu = false },
+                    modifier = Modifier.background(CardBackground)
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.PictureAsPdf,
+                                    contentDescription = null,
+                                    tint = AccentGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("PDF Report", color = TextPrimary)
+                            }
+                        },
+                        onClick = {
+                            showExportMenu = false
+                            onExportPdf()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Image,
+                                    contentDescription = null,
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("PNG Image", color = TextPrimary)
+                            }
+                        },
+                        onClick = {
+                            showExportMenu = false
+                            onExportImage()
+                        }
+                    )
+                    HorizontalDivider(color = DividerColor)
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Code,
+                                    contentDescription = null,
+                                    tint = AccentPurple,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("JSON Data", color = TextPrimary)
+                            }
+                        },
+                        onClick = {
+                            showExportMenu = false
+                            onExportJson()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.TableChart,
+                                    contentDescription = null,
+                                    tint = AccentGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("CSV Spreadsheet", color = TextPrimary)
+                            }
+                        },
+                        onClick = {
+                            showExportMenu = false
+                            onExportCsv()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Description,
+                                    contentDescription = null,
+                                    tint = AccentBlue,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Text Report", color = TextPrimary)
+                            }
+                        },
+                        onClick = {
+                            showExportMenu = false
+                            onExportText()
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -1700,15 +1849,17 @@ private fun MahadashaCard(mahadasha: DashaCalculator.Mahadasha, isActive: Boolea
     }
 }
 
-// ============ ASPECTS TAB ============
+// ============ YOGAS TAB (COMPREHENSIVE) ============
 
 @Composable
-private fun AspectsTabContent(chart: VedicChart) {
-    val aspectMatrix = remember(chart) {
-        AspectCalculator.calculateAspectMatrix(chart)
-    }
-    val yogas = remember(chart) {
-        AspectCalculator.detectYogas(chart)
+private fun YogasTabContent(chart: VedicChart) {
+    var yogaAnalysis by remember { mutableStateOf<YogaCalculator.YogaAnalysis?>(null) }
+    var selectedCategory by remember { mutableStateOf<YogaCalculator.YogaCategory?>(null) }
+
+    LaunchedEffect(chart) {
+        withContext(Dispatchers.Default) {
+            yogaAnalysis = YogaCalculator.calculateYogas(chart)
+        }
     }
 
     LazyColumn(
@@ -1716,13 +1867,1573 @@ private fun AspectsTabContent(chart: VedicChart) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Yogas section
-        if (yogas.isNotEmpty()) {
+        yogaAnalysis?.let { analysis ->
+            // Overview card
             item {
-                YogasSection(yogas)
+                YogaOverviewCard(analysis)
+            }
+
+            // Category selector
+            item {
+                YogaCategorySelector(
+                    analysis = analysis,
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { selectedCategory = it }
+                )
+            }
+
+            // Display yogas based on selection
+            val yogasToDisplay = when (selectedCategory) {
+                YogaCalculator.YogaCategory.RAJA_YOGA -> analysis.rajaYogas
+                YogaCalculator.YogaCategory.DHANA_YOGA -> analysis.dhanaYogas
+                YogaCalculator.YogaCategory.MAHAPURUSHA_YOGA -> analysis.mahapurushaYogas
+                YogaCalculator.YogaCategory.NABHASA_YOGA -> analysis.nabhasaYogas
+                YogaCalculator.YogaCategory.CHANDRA_YOGA -> analysis.chandraYogas
+                YogaCalculator.YogaCategory.SOLAR_YOGA -> analysis.solarYogas
+                YogaCalculator.YogaCategory.NEGATIVE_YOGA -> analysis.negativeYogas
+                YogaCalculator.YogaCategory.SPECIAL_YOGA -> analysis.specialYogas
+                null -> analysis.allYogas
+            }
+
+            if (yogasToDisplay.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = CardBackground
+                    ) {
+                        Text(
+                            text = "No yogas found in this category",
+                            color = TextMuted,
+                            modifier = Modifier.padding(16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                items(yogasToDisplay) { yoga ->
+                    ExpandedYogaCard(yoga)
+                }
+            }
+        } ?: item {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AccentGold)
             }
         }
+    }
+}
 
+@Composable
+private fun YogaOverviewCard(analysis: YogaCalculator.YogaAnalysis) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = AccentGold,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Yoga Analysis",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "${analysis.allYogas.size} yogas detected",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Strength indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Overall Yoga Strength",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+                Text(
+                    text = "${String.format("%.1f", analysis.overallYogaStrength)}%",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        analysis.overallYogaStrength >= 70 -> SuccessColor
+                        analysis.overallYogaStrength >= 40 -> WarningColor
+                        else -> ErrorColor
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = { (analysis.overallYogaStrength / 100f).toFloat() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = when {
+                    analysis.overallYogaStrength >= 70 -> SuccessColor
+                    analysis.overallYogaStrength >= 40 -> WarningColor
+                    else -> ErrorColor
+                },
+                trackColor = DividerColor
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Dominant category
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = AccentGold.copy(alpha = 0.1f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Dominant: ",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                    Text(
+                        text = analysis.dominantYogaCategory.displayName,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AccentGold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YogaCategorySelector(
+    analysis: YogaCalculator.YogaAnalysis,
+    selectedCategory: YogaCalculator.YogaCategory?,
+    onCategorySelected: (YogaCalculator.YogaCategory?) -> Unit
+) {
+    val categories = listOf(
+        null to "All (${analysis.allYogas.size})",
+        YogaCalculator.YogaCategory.MAHAPURUSHA_YOGA to "Mahapurusha (${analysis.mahapurushaYogas.size})",
+        YogaCalculator.YogaCategory.RAJA_YOGA to "Raja (${analysis.rajaYogas.size})",
+        YogaCalculator.YogaCategory.DHANA_YOGA to "Dhana (${analysis.dhanaYogas.size})",
+        YogaCalculator.YogaCategory.CHANDRA_YOGA to "Chandra (${analysis.chandraYogas.size})",
+        YogaCalculator.YogaCategory.SOLAR_YOGA to "Solar (${analysis.solarYogas.size})",
+        YogaCalculator.YogaCategory.NABHASA_YOGA to "Nabhasa (${analysis.nabhasaYogas.size})",
+        YogaCalculator.YogaCategory.NEGATIVE_YOGA to "Negative (${analysis.negativeYogas.size})",
+        YogaCalculator.YogaCategory.SPECIAL_YOGA to "Special (${analysis.specialYogas.size})"
+    )
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(categories) { (category, label) ->
+            FilterChip(
+                selected = selectedCategory == category,
+                onClick = { onCategorySelected(category) },
+                label = {
+                    Text(
+                        text = label,
+                        fontSize = 11.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = AccentGold.copy(alpha = 0.2f),
+                    selectedLabelColor = AccentGold,
+                    containerColor = CardBackground,
+                    labelColor = TextSecondary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = DividerColor,
+                    selectedBorderColor = AccentGold,
+                    enabled = true,
+                    selected = selectedCategory == category
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpandedYogaCard(yoga: YogaCalculator.Yoga) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val categoryColor = when (yoga.category) {
+        YogaCalculator.YogaCategory.RAJA_YOGA -> AccentGold
+        YogaCalculator.YogaCategory.DHANA_YOGA -> SuccessColor
+        YogaCalculator.YogaCategory.MAHAPURUSHA_YOGA -> AccentPurple
+        YogaCalculator.YogaCategory.CHANDRA_YOGA -> AccentBlue
+        YogaCalculator.YogaCategory.SOLAR_YOGA -> AccentOrange
+        YogaCalculator.YogaCategory.NABHASA_YOGA -> AccentTeal
+        YogaCalculator.YogaCategory.NEGATIVE_YOGA -> ErrorColor
+        YogaCalculator.YogaCategory.SPECIAL_YOGA -> AccentGreen
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header row - clickable
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Yoga indicator
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                if (yoga.isAuspicious) categoryColor else ErrorColor,
+                                CircleShape
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = yoga.name,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = yoga.sanskritName,
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Strength badge
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = categoryColor.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = yoga.strength.displayName,
+                            fontSize = 10.sp,
+                            color = categoryColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val rotation by animateFloatAsState(
+                        targetValue = if (expanded) 180f else 0f,
+                        label = "rotation"
+                    )
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(rotation)
+                    )
+                }
+            }
+
+            // Expanded content
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    HorizontalDivider(color = DividerColor)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Description
+                    Text(
+                        text = yoga.description,
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Effects
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = CardBackgroundElevated
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Effects",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextMuted
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = yoga.effects,
+                                fontSize = 13.sp,
+                                color = if (yoga.isAuspicious) SuccessColor else ErrorColor
+                            )
+                        }
+                    }
+
+                    // Planets involved
+                    if (yoga.planets.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row {
+                            Text(
+                                text = "Planets: ",
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                            Text(
+                                text = yoga.planets.joinToString(", ") { it.displayName },
+                                fontSize = 12.sp,
+                                color = AccentTeal
+                            )
+                        }
+                    }
+
+                    // Houses involved
+                    if (yoga.houses.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row {
+                            Text(
+                                text = "Houses: ",
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                            Text(
+                                text = yoga.houses.joinToString(", "),
+                                fontSize = 12.sp,
+                                color = AccentPurple
+                            )
+                        }
+                    }
+
+                    // Activation period
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        Text(
+                            text = "Activation: ",
+                            fontSize = 12.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = yoga.activationPeriod,
+                            fontSize = 12.sp,
+                            color = AccentGold
+                        )
+                    }
+
+                    // Cancellation factors
+                    if (yoga.cancellationFactors.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Cancellation Factors:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextMuted
+                        )
+                        yoga.cancellationFactors.forEach { factor ->
+                            Text(
+                                text = "• $factor",
+                                fontSize = 11.sp,
+                                color = WarningColor,
+                                modifier = Modifier.padding(start = 8.dp, top = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Strength bar
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Strength",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = "${String.format("%.0f", yoga.strengthPercentage)}%",
+                            fontSize = 11.sp,
+                            color = categoryColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { (yoga.strengthPercentage / 100f).toFloat() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = categoryColor,
+                        trackColor = categoryColor.copy(alpha = 0.2f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ============ ASHTAKAVARGA TAB ============
+
+@Composable
+private fun AshtakavargaTabContent(chart: VedicChart) {
+    var ashtakavargaAnalysis by remember { mutableStateOf<AshtakavargaCalculator.AshtakavargaAnalysis?>(null) }
+    var selectedPlanet by remember { mutableStateOf<com.astro.storm.data.model.Planet?>(null) }
+
+    LaunchedEffect(chart) {
+        withContext(Dispatchers.Default) {
+            ashtakavargaAnalysis = AshtakavargaCalculator.calculateAshtakavarga(chart)
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        ashtakavargaAnalysis?.let { analysis ->
+            // Sarvashtakavarga overview
+            item {
+                SarvashtakavargaCard(analysis.sarvashtakavarga)
+            }
+
+            // Planet selector for Bhinnashtakavarga
+            item {
+                BhinnashtakavargaPlanetSelector(
+                    selectedPlanet = selectedPlanet,
+                    onPlanetSelected = { selectedPlanet = it }
+                )
+            }
+
+            // Display Bhinnashtakavarga
+            selectedPlanet?.let { planet ->
+                analysis.bhinnashtakavarga[planet]?.let { bav ->
+                    item {
+                        BhinnashtakavargaCard(bav)
+                    }
+                }
+            } ?: item {
+                // Show SAV grid when no planet selected
+                SarvashtakavargaGridCard(analysis.sarvashtakavarga)
+            }
+
+            // Transit predictions based on Ashtakavarga
+            item {
+                AshtakavargaTransitPredictionsCard(chart, analysis)
+            }
+        } ?: item {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AccentGold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SarvashtakavargaCard(sav: AshtakavargaCalculator.Sarvashtakavarga) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.GridOn,
+                    contentDescription = null,
+                    tint = AccentGold,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Sarvashtakavarga",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Combined Strength Analysis",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Total and average
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = sav.totalBindus.toString(),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentGold
+                    )
+                    Text(
+                        text = "Total Bindus",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = String.format("%.1f", sav.totalBindus / 12.0),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentTeal
+                    )
+                    Text(
+                        text = "Avg per Sign",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Strongest and weakest signs
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = SuccessColor.copy(alpha = 0.1f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Strongest",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = sav.strongestSign.displayName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SuccessColor
+                        )
+                        Text(
+                            text = "${sav.getBindusForSign(sav.strongestSign)} bindus",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = ErrorColor.copy(alpha = 0.1f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Weakest",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = sav.weakestSign.displayName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ErrorColor
+                        )
+                        Text(
+                            text = "${sav.getBindusForSign(sav.weakestSign)} bindus",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BhinnashtakavargaPlanetSelector(
+    selectedPlanet: com.astro.storm.data.model.Planet?,
+    onPlanetSelected: (com.astro.storm.data.model.Planet?) -> Unit
+) {
+    val planets = listOf(
+        null to "SAV Grid",
+        com.astro.storm.data.model.Planet.SUN to "Sun",
+        com.astro.storm.data.model.Planet.MOON to "Moon",
+        com.astro.storm.data.model.Planet.MARS to "Mars",
+        com.astro.storm.data.model.Planet.MERCURY to "Mercury",
+        com.astro.storm.data.model.Planet.JUPITER to "Jupiter",
+        com.astro.storm.data.model.Planet.VENUS to "Venus",
+        com.astro.storm.data.model.Planet.SATURN to "Saturn"
+    )
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(planets) { (planet, label) ->
+            FilterChip(
+                selected = selectedPlanet == planet,
+                onClick = { onPlanetSelected(planet) },
+                label = {
+                    Text(
+                        text = label,
+                        fontSize = 11.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = AccentGold.copy(alpha = 0.2f),
+                    selectedLabelColor = AccentGold,
+                    containerColor = CardBackground,
+                    labelColor = TextSecondary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = DividerColor,
+                    selectedBorderColor = AccentGold,
+                    enabled = true,
+                    selected = selectedPlanet == planet
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SarvashtakavargaGridCard(sav: AshtakavargaCalculator.Sarvashtakavarga) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "SAV by Sign",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // Grid of signs with bindus
+            com.astro.storm.data.model.ZodiacSign.entries.chunked(3).forEach { rowSigns ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowSigns.forEach { sign ->
+                        val bindus = sav.getBindusForSign(sign)
+                        val isFavorable = sav.isFavorableForTransit(sign)
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isFavorable) SuccessColor.copy(alpha = 0.1f) else CardBackgroundElevated
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = sign.abbreviation,
+                                    fontSize = 12.sp,
+                                    color = TextMuted
+                                )
+                                Text(
+                                    text = bindus.toString(),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isFavorable) SuccessColor else TextPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Legend
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Green = 28+ bindus (favorable for transits)",
+                fontSize = 10.sp,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun BhinnashtakavargaCard(bav: AshtakavargaCalculator.Bhinnashtakavarga) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${bav.planet.displayName} Bhinnashtakavarga",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Total: ${bav.totalBindus}",
+                    fontSize = 12.sp,
+                    color = AccentGold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Grid of signs with bindus
+            com.astro.storm.data.model.ZodiacSign.entries.chunked(4).forEach { rowSigns ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    rowSigns.forEach { sign ->
+                        val bindus = bav.getBindusForSign(sign)
+                        val isStrong = bindus >= 4
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(6.dp),
+                            color = when {
+                                bindus >= 5 -> SuccessColor.copy(alpha = 0.15f)
+                                bindus >= 4 -> AccentTeal.copy(alpha = 0.1f)
+                                bindus <= 2 -> ErrorColor.copy(alpha = 0.1f)
+                                else -> CardBackgroundElevated
+                            }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = sign.abbreviation,
+                                    fontSize = 10.sp,
+                                    color = TextMuted
+                                )
+                                Text(
+                                    text = bindus.toString(),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        bindus >= 5 -> SuccessColor
+                                        bindus >= 4 -> AccentTeal
+                                        bindus <= 2 -> ErrorColor
+                                        else -> TextPrimary
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+
+            // Legend
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                LegendChip("5+", SuccessColor)
+                LegendChip("4", AccentTeal)
+                LegendChip("3", TextPrimary)
+                LegendChip("0-2", ErrorColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendChip(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = TextMuted
+        )
+    }
+}
+
+@Composable
+private fun AshtakavargaTransitPredictionsCard(
+    chart: VedicChart,
+    analysis: AshtakavargaCalculator.AshtakavargaAnalysis
+) {
+    val currentTransitPositions = remember(chart) {
+        // Get current planetary positions for transit analysis
+        chart.planetPositions.map { it.sign }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.TrendingUp,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Transit Quality by Sign",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            Text(
+                text = "Based on Sarvashtakavarga scores (28+ = Favorable)",
+                fontSize = 11.sp,
+                color = TextMuted,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // Show all signs with their transit quality
+            com.astro.storm.data.model.ZodiacSign.entries.forEach { sign ->
+                val bindus = analysis.sarvashtakavarga.getBindusForSign(sign)
+                val isFavorable = analysis.sarvashtakavarga.isFavorableForTransit(sign)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = sign.displayName,
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        modifier = Modifier.width(90.dp)
+                    )
+
+                    // Progress bar
+                    Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                        LinearProgressIndicator(
+                            progress = { (bindus / 56f).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = if (isFavorable) SuccessColor else WarningColor,
+                            trackColor = DividerColor
+                        )
+                    }
+
+                    Text(
+                        text = "$bindus",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isFavorable) SuccessColor else TextMuted,
+                        modifier = Modifier.width(30.dp),
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ============ TRANSITS TAB ============
+
+@Composable
+private fun TransitsTabContent(chart: VedicChart, context: android.content.Context) {
+    var transitAnalysis by remember { mutableStateOf<TransitAnalyzer.TransitAnalysis?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(chart) {
+        withContext(Dispatchers.Default) {
+            try {
+                val analyzer = TransitAnalyzer(context)
+                transitAnalysis = analyzer.analyzeTransits(chart)
+                analyzer.close()
+            } catch (e: Exception) {
+                // Handle error
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (isLoading) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = AccentGold)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Calculating real-time transits...",
+                            fontSize = 12.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+        } else {
+            transitAnalysis?.let { analysis ->
+                // Overall assessment
+                item {
+                    TransitOverallAssessmentCard(analysis.overallAssessment)
+                }
+
+                // Current transit positions
+                item {
+                    CurrentTransitPositionsCard(analysis.transitPositions)
+                }
+
+                // Gochara analysis
+                item {
+                    GocharaAnalysisCard(analysis.gocharaResults)
+                }
+
+                // Significant aspects
+                if (analysis.transitAspects.isNotEmpty()) {
+                    item {
+                        TransitAspectsCard(analysis.transitAspects.take(8))
+                    }
+                }
+
+                // Ashtakavarga scores
+                if (analysis.ashtakavargaScores.isNotEmpty()) {
+                    item {
+                        TransitAshtakavargaScoresCard(analysis.ashtakavargaScores)
+                    }
+                }
+
+                // Significant periods
+                if (analysis.significantPeriods.isNotEmpty()) {
+                    item {
+                        SignificantPeriodsCard(analysis.significantPeriods)
+                    }
+                }
+            } ?: item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = CardBackground
+                ) {
+                    Text(
+                        text = "Unable to calculate transit analysis",
+                        color = ErrorColor,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransitOverallAssessmentCard(assessment: TransitAnalyzer.OverallTransitAssessment) {
+    val qualityColor = when (assessment.quality) {
+        TransitAnalyzer.TransitQuality.EXCELLENT -> SuccessColor
+        TransitAnalyzer.TransitQuality.GOOD -> AccentGreen
+        TransitAnalyzer.TransitQuality.MIXED -> WarningColor
+        TransitAnalyzer.TransitQuality.CHALLENGING -> AccentOrange
+        TransitAnalyzer.TransitQuality.DIFFICULT -> ErrorColor
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = AccentGold,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Current Transit Period",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Real-time analysis",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            // Quality badge
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = qualityColor.copy(alpha = 0.15f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = assessment.quality.displayName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = qualityColor
+                    )
+                    Text(
+                        text = "Score: ${String.format("%.0f", assessment.score)}/100",
+                        fontSize = 14.sp,
+                        color = qualityColor
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Summary
+            Text(
+                text = assessment.summary,
+                fontSize = 13.sp,
+                color = TextSecondary
+            )
+
+            // Focus areas
+            if (assessment.focusAreas.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Key Focus Areas:",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextMuted
+                )
+                assessment.focusAreas.forEach { area ->
+                    Text(
+                        text = "• $area",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrentTransitPositionsCard(positions: List<PlanetPosition>) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.Public,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Current Planetary Positions",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+                val rotation by animateFloatAsState(
+                    targetValue = if (expanded) 180f else 0f,
+                    label = "rotation"
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.rotate(rotation)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    positions.filter { it.planet in com.astro.storm.data.model.Planet.MAIN_PLANETS }.forEach { pos ->
+                        val retroText = if (pos.isRetrograde) " (R)" else ""
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            planetColors[pos.planet] ?: AccentGold,
+                                            CircleShape
+                                        )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = pos.planet.displayName + retroText,
+                                    fontSize = 13.sp,
+                                    color = if (pos.isRetrograde) WarningColor else TextPrimary
+                                )
+                            }
+                            Text(
+                                text = "${pos.sign.displayName} ${(pos.longitude % 30).toInt()}°",
+                                fontSize = 13.sp,
+                                color = AccentTeal
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GocharaAnalysisCard(gocharaResults: List<TransitAnalyzer.GocharaResult>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Brightness2,
+                    contentDescription = null,
+                    tint = AccentPurple,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Gochara (Transit from Moon)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Traditional Vedic transit analysis",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            gocharaResults.filter { it.planet in com.astro.storm.data.model.Planet.MAIN_PLANETS }.forEach { result ->
+                val effectColor = when (result.effect) {
+                    TransitAnalyzer.TransitEffect.EXCELLENT -> SuccessColor
+                    TransitAnalyzer.TransitEffect.GOOD -> AccentGreen
+                    TransitAnalyzer.TransitEffect.NEUTRAL -> TextSecondary
+                    TransitAnalyzer.TransitEffect.CHALLENGING -> WarningColor
+                    TransitAnalyzer.TransitEffect.DIFFICULT -> ErrorColor
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = effectColor.copy(alpha = 0.1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = result.planet.displayName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                                if (result.isVedhaAffected) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = WarningColor.copy(alpha = 0.2f)
+                                    ) {
+                                        Text(
+                                            text = "Vedha",
+                                            fontSize = 9.sp,
+                                            color = WarningColor,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                text = "House ${result.houseFromMoon} from Moon",
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                        }
+                        Text(
+                            text = result.effect.displayName,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = effectColor
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransitAspectsCard(aspects: List<TransitAnalyzer.TransitAspect>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Hub,
+                    contentDescription = null,
+                    tint = AccentBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Active Transit Aspects",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            aspects.forEach { aspect ->
+                val isHarmonic = aspect.aspectType in listOf("Trine", "Sextile")
+                val isBenefic = aspect.transitingPlanet in listOf(
+                    com.astro.storm.data.model.Planet.JUPITER,
+                    com.astro.storm.data.model.Planet.VENUS
+                )
+                val aspectColor = when {
+                    isHarmonic && isBenefic -> SuccessColor
+                    isHarmonic -> AccentGreen
+                    aspect.aspectType == "Conjunction" -> AccentGold
+                    else -> WarningColor
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Tr. ${aspect.transitingPlanet.displayName} ${aspect.aspectType} ${aspect.natalPlanet.displayName}",
+                            fontSize = 12.sp,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (aspect.isApplying) "Applying" else "Separating",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Orb: ${String.format("%.1f", aspect.orb)}°",
+                            fontSize = 11.sp,
+                            color = aspectColor
+                        )
+                        Text(
+                            text = "${(aspect.strength * 100).toInt()}%",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransitAshtakavargaScoresCard(scores: Map<com.astro.storm.data.model.Planet, AshtakavargaCalculator.TransitScore>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.GridOn,
+                    contentDescription = null,
+                    tint = AccentOrange,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Transit Ashtakavarga Scores",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            scores.forEach { (planet, score) ->
+                val scoreColor = when {
+                    score.binduScore >= 5 -> SuccessColor
+                    score.binduScore >= 4 -> AccentGreen
+                    score.binduScore >= 3 -> WarningColor
+                    else -> ErrorColor
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    planetColors[planet] ?: AccentGold,
+                                    CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = planet.displayName,
+                            fontSize = 13.sp,
+                            color = TextPrimary
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "BAV: ${score.binduScore}",
+                            fontSize = 12.sp,
+                            color = scoreColor,
+                            modifier = Modifier.width(55.dp)
+                        )
+                        Text(
+                            text = "SAV: ${score.savScore}",
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            modifier = Modifier.width(55.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SignificantPeriodsCard(periods: List<TransitAnalyzer.SignificantPeriod>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBackground
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Event,
+                    contentDescription = null,
+                    tint = AccentRose,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Significant Upcoming Periods",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            periods.take(5).forEach { period ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = CardBackgroundElevated
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Intensity indicator
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(40.dp)
+                        ) {
+                            repeat(5) { index ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(
+                                            if (index < period.intensity) AccentOrange
+                                            else DividerColor,
+                                            CircleShape
+                                        )
+                                )
+                                if (index < 4) Spacer(modifier = Modifier.height(2.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = period.description,
+                                fontSize = 12.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "${period.startDate.monthValue}/${period.startDate.dayOfMonth} - ${period.endDate.monthValue}/${period.endDate.dayOfMonth}",
+                                fontSize = 10.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============ ASPECTS TAB (Simplified - aspects only) ============
+
+@Composable
+private fun AspectsTabContent(chart: VedicChart) {
+    val aspectMatrix = remember(chart) {
+        AspectCalculator.calculateAspectMatrix(chart)
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         // Aspect summary
         item {
             AspectSummaryCard(aspectMatrix)
@@ -1741,72 +3452,6 @@ private fun AspectsTabContent(chart: VedicChart) {
 
         items(aspectMatrix.aspects.take(15)) { aspect ->
             AspectCard(aspect)
-        }
-    }
-}
-
-@Composable
-private fun YogasSection(yogas: List<AspectCalculator.Yoga>) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = CardBackground
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 12.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    tint = AccentGold,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Yogas Detected",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-            }
-
-            yogas.forEach { yoga ->
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (yoga.isAuspicious) SuccessColor.copy(alpha = 0.1f)
-                    else WarningColor.copy(alpha = 0.1f)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = yoga.name,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (yoga.isAuspicious) SuccessColor else WarningColor
-                            )
-                            Text(
-                                text = "${(yoga.strength * 100).toInt()}%",
-                                fontSize = 12.sp,
-                                color = TextMuted
-                            )
-                        }
-                        Text(
-                            text = yoga.description,
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
         }
     }
 }
