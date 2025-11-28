@@ -211,31 +211,33 @@ class SwissEphemerisEngine(context: Context) {
     }
 
     /**
-     * Determine which house a planet is in
+     * Determine which house a planet is in using a robust, modular arithmetic approach.
+     * This method correctly handles house boundaries that cross over 0° Aries.
      */
     private fun determineHouse(
         longitude: Double,
         houseCusps: DoubleArray
     ): Int {
-        val normalizedLongitude = (longitude % 360.0 + 360.0) % 360.0
-
+        // houseCusps is 1-indexed from Swiss Ephemeris, where houseCusps[1] is the Ascendant.
         for (i in 1..12) {
             val cuspStart = houseCusps[i]
             val cuspEnd = if (i == 12) houseCusps[1] else houseCusps[i + 1]
 
-            if (cuspEnd > cuspStart) {
-                if (normalizedLongitude >= cuspStart && normalizedLongitude < cuspEnd) {
-                    return i
-                }
-            } else {
-                // Crosses 0° Aries
-                if (normalizedLongitude >= cuspStart || normalizedLongitude < cuspEnd) {
-                    return i
-                }
+            // By normalizing all longitudes relative to the starting cusp of the house,
+            // we can handle the 0-degree crossover seamlessly without special conditions.
+            // A planet is in a house if its normalized position is less than the house's size.
+            val normalizedPlanetLon = (longitude - cuspStart + 360) % 360
+            val normalizedCuspEnd = (cuspEnd - cuspStart + 360) % 360
+
+            if (normalizedPlanetLon < normalizedCuspEnd) {
+                return i
             }
         }
 
-        return 1 // Default to first house
+        // Fallback for edge cases, such as a planet sitting exactly on a cusp.
+        // It should logically be placed in the house that starts on that cusp,
+        // which the loop would handle. This is a safeguard.
+        return 12
     }
 
     /**
