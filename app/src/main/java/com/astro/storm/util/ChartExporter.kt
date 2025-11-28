@@ -458,7 +458,7 @@ class ChartExporter(private val context: Context) {
                     paint.color = Color.rgb(50, 50, 50)
                     yPos += 16f
 
-                    if (yPos > options.pageSize.height - 100) break
+                    if (yPos > options.pageSize.height - 100) return@forEach
                 }
             }
 

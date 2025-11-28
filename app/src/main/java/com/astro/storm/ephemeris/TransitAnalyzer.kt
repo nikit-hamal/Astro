@@ -340,8 +340,8 @@ class TransitAnalyzer(private val context: Context) {
         val transitBirthData = BirthData(
             name = "Transit",
             dateTime = dateTime,
-            latitude = 0.0f,
-            longitude = 0.0f,
+            latitude = 0.0,
+            longitude = 0.0,
             timezone = timezone,
             location = "Transit Chart"
         )
@@ -802,6 +802,7 @@ class TransitAnalyzer(private val context: Context) {
                 8 -> areas.add("Ashtama Shani - be cautious about health, unexpected challenges")
                 4 -> areas.add("Saturn transiting 4th - attention to home, mother, mental peace")
                 10 -> areas.add("Saturn transiting 10th - career responsibilities, hard work pays off")
+                else -> { /* No specific focus area for other houses */ }
             }
         }
 
@@ -811,6 +812,7 @@ class TransitAnalyzer(private val context: Context) {
                 1, 5, 9 -> areas.add("Jupiter in trine houses - excellent for expansion, learning, spirituality")
                 2 -> areas.add("Jupiter transiting 2nd - favorable for wealth accumulation")
                 11 -> areas.add("Jupiter transiting 11th - gains through networking, fulfillment of desires")
+                else -> { /* No specific focus area for other houses */ }
             }
         }
 
