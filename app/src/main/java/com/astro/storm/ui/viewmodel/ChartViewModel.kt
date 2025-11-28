@@ -118,14 +118,15 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+import androidx.compose.ui.unit.Density
     /**
      * Export chart as image
      */
-    fun exportChartImage(chart: VedicChart, fileName: String) {
+    fun exportChartImage(chart: VedicChart, fileName: String, density: Density) {
         viewModelScope.launch {
             try {
                 val bitmap = withContext(Dispatchers.Default) {
-                    chartRenderer.createChartBitmap(chart, 2048, 2048)
+                    chartRenderer.createChartBitmap(chart, 2048, 2048, density)
                 }
 
                 val result = ExportUtils.saveChartImage(getApplication(), bitmap, fileName)

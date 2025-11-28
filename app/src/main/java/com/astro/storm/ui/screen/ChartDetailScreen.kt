@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -114,6 +115,7 @@ fun ChartDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val density = LocalDensity.current
 
     var currentChart by remember { mutableStateOf<VedicChart?>(null) }
     var selectedTab by remember { mutableStateOf(ChartTab.CHART) }
@@ -230,7 +232,8 @@ fun ChartDetailScreen(
                         if (permissionsState.allPermissionsGranted) {
                             viewModel.exportChartImage(
                                 chart,
-                                "chart_${chart.birthData.name.replace(" ", "_")}_${System.currentTimeMillis()}"
+                                "chart_${chart.birthData.name.replace(" ", "_")}_${System.currentTimeMillis()}",
+                                density
                             )
                         } else {
                             permissionsState.launchMultiplePermissionRequest()

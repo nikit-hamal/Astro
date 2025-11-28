@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,7 @@ fun FullScreenChartDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
     var downloadSuccess by remember { mutableStateOf<Boolean?>(null) }
@@ -228,7 +230,8 @@ fun FullScreenChartDialog(
                                     chartRenderer = chartRenderer,
                                     chart = chart,
                                     divisionalChartData = divisionalChartData,
-                                    chartTitle = chartTitle
+                                    chartTitle = chartTitle,
+                                    density = density
                                 )
                                 downloadSuccess = success
                                 isDownloading = false
@@ -309,7 +312,8 @@ private suspend fun saveChartToGallery(
     chartRenderer: ChartRenderer,
     chart: VedicChart,
     divisionalChartData: DivisionalChartData?,
-    chartTitle: String
+    chartTitle: String,
+    density: androidx.compose.ui.unit.Density
 ): Boolean = withContext(Dispatchers.IO) {
     try {
         // Create high-resolution bitmap
@@ -320,10 +324,11 @@ private suspend fun saveChartToGallery(
                 ascendantLongitude = divisionalChartData.ascendantLongitude,
                 chartTitle = chartTitle,
                 width = size,
-                height = size
+                height = size,
+                density = density
             )
         } else {
-            chartRenderer.createChartBitmap(chart, size, size)
+            chartRenderer.createChartBitmap(chart, size, size, density)
         }
 
         // Save to gallery
