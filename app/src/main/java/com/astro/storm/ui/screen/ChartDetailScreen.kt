@@ -592,7 +592,7 @@ private fun NatalContent(
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
                     color = AccentGold
                 )
             }
@@ -1196,8 +1196,8 @@ private fun HouseDetailItem(
             // Planets
             if (planetsInHouse.isNotEmpty()) {
                 FlowRow(
-                    mainAxisSpacing = 4.dp,
-                    crossAxisSpacing = 4.dp,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     planetsInHouse.forEach { planet ->
                         PlanetChip(planet)
@@ -1647,6 +1647,17 @@ private fun PlanetDetailCard(
 
             // Tap for more hint
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Tap for detailed analysis & predictions",
+                fontSize = 11.sp,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
 // ============ PREDICTIONS CONTENT ============
 
 @Composable
@@ -1663,7 +1674,7 @@ private fun PredictionsContent(
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedSubTab.ordinal]),
                     color = AccentGold
                 )
             }
@@ -1693,16 +1704,6 @@ private fun PredictionsContent(
                 PredictionsSubTab.ASHTAKAVARGA -> AshtakavargaTabContent(chart)
                 PredictionsSubTab.TRANSITS -> TransitsTabContent(chart, context)
             }
-        }
-    }
-}
-            Text(
-                text = "Tap for detailed analysis & predictions",
-                fontSize = 11.sp,
-                color = TextMuted,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
