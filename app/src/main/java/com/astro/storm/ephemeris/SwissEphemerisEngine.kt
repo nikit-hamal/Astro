@@ -45,7 +45,8 @@ class SwissEphemerisEngine(context: Context) {
             val assetManager = context.assets
             val ephemerisFiles = try {
                 assetManager.list("ephe") ?: emptyArray()
-            } catch (e: Exception) {
+            } catch (e: java.io.IOException) {
+                android.util.Log.e("SwissEphemeris", "Could not list ephemeris assets", e)
                 emptyArray()
             }
 
@@ -59,9 +60,9 @@ class SwissEphemerisEngine(context: Context) {
                     }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: java.io.IOException) {
             // Ephemeris files are optional; calculations will use less precise methods if unavailable
-            android.util.Log.w("SwissEphemeris", "Could not copy ephemeris files: ${e.message}")
+            android.util.Log.e("SwissEphemeris", "Could not copy ephemeris files", e)
         }
     }
 

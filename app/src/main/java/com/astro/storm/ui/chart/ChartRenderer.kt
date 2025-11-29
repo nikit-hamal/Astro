@@ -129,6 +129,11 @@ class ChartRenderer {
         const val SYMBOL_VARGOTTAMA = "\u00A4"  // ¤ - Vargottama (same sign in D1 and D9)
         const val SYMBOL_EXALTED = "\u2191"     // ↑ - Exalted
         const val SYMBOL_DEBILITATED = "\u2193" // ↓ - Debilitated
+
+        // Each sign is 30 degrees, divided into 9 Navamsa parts.
+        // Each part is 30 / 9 = 3.333... degrees, which is exactly 10/3 degrees.
+        // Using a precise constant avoids floating-point inaccuracies.
+        private const val NAVAMSA_PART_DEGREES = 10.0 / 3.0
     }
 
     /**
@@ -148,26 +153,6 @@ class ChartRenderer {
             Planet.URANUS -> URANUS_COLOR
             Planet.NEPTUNE -> NEPTUNE_COLOR
             Planet.PLUTO -> PLUTO_COLOR
-        }
-    }
-
-    /**
-     * Get abbreviated name for planet (2-3 characters)
-     */
-    private fun getPlanetAbbreviation(planet: Planet): String {
-        return when (planet) {
-            Planet.SUN -> "Su"
-            Planet.MOON -> "Mo"
-            Planet.MARS -> "Ma"
-            Planet.MERCURY -> "Me"
-            Planet.JUPITER -> "Ju"
-            Planet.VENUS -> "Ve"
-            Planet.SATURN -> "Sa"
-            Planet.RAHU -> "Ra"
-            Planet.KETU -> "Ke"
-            Planet.URANUS -> "Ur"
-            Planet.NEPTUNE -> "Ne"
-            Planet.PLUTO -> "Pl"
         }
     }
 
@@ -238,11 +223,6 @@ class ChartRenderer {
     /**
      * Calculate Navamsa longitude for a given longitude
      */
-    // Each sign is 30 degrees, divided into 9 Navamsa parts.
-    // Each part is 30 / 9 = 3.333... degrees, which is exactly 10/3 degrees.
-    // Using a precise constant avoids floating-point inaccuracies.
-    private const val NAVAMSA_PART_DEGREES = 10.0 / 3.0
-
     private fun calculateNavamsaLongitude(longitude: Double): Double {
         val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
         val signNumber = (normalizedLong / 30.0).toInt() // 0-11
@@ -594,7 +574,7 @@ class ChartRenderer {
         }
 
         planets.forEachIndexed { index, planet ->
-            val abbrev = getPlanetAbbreviation(planet.planet)
+            val abbrev = planet.planet.symbol
             val degree = (planet.longitude % 30.0).toInt()
             val degreeSuper = toSuperscript(degree)
 
