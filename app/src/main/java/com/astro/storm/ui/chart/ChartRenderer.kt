@@ -14,7 +14,6 @@ import com.astro.storm.data.model.Planet
 import com.astro.storm.data.model.PlanetPosition
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.data.model.ZodiacSign
-import kotlin.math.abs
 import kotlin.math.min
 
 /**
@@ -76,7 +75,10 @@ import kotlin.math.min
  * - Two corner-to-corner diagonals
  * This creates 12 distinct triangular/diamond houses
  */
-class ChartRenderer {
+class ChartRenderer(
+    private val chartDataProcessor: ChartDataProcessor = ChartDataProcessor(),
+    private val theme: ChartTheme = ChartTheme()
+) {
 
     // Named constants for geometry ratios
     private val CORNER_CENTER_FRACTION = 0.18f
@@ -97,36 +99,10 @@ class ChartRenderer {
         isSubpixelText = true
     }
 
-    private val borderStroke = Stroke(width = 3f)
-    private val lineStroke = Stroke(width = 2.5f)
     private val frameLinesPath = Path()
 
 
     companion object {
-        // Typefaces for text rendering
-        private val TYPEFACE_NORMAL = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
-        private val TYPEFACE_BOLD = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-
-        // Professional color palette matching traditional Vedic astrology software
-        private val BACKGROUND_COLOR = Color(0xFFD4C4A8) // Warm parchment background
-        private val BORDER_COLOR = Color(0xFFB8860B) // Dark goldenrod for lines
-        private val HOUSE_NUMBER_COLOR = Color(0xFF4A4A4A) // Dark gray for house numbers
-
-        // Planet-specific colors matching AstroSage style
-        private val SUN_COLOR = Color(0xFFD2691E) // Chocolate/orange for Sun
-        private val MOON_COLOR = Color(0xFFDC143C) // Crimson for Moon
-        private val MARS_COLOR = Color(0xFFDC143C) // Red for Mars
-        private val MERCURY_COLOR = Color(0xFF228B22) // Forest green for Mercury
-        private val JUPITER_COLOR = Color(0xFFDAA520) // Goldenrod for Jupiter
-        private val VENUS_COLOR = Color(0xFF9370DB) // Medium purple for Venus
-        private val SATURN_COLOR = Color(0xFF4169E1) // Royal blue for Saturn
-        private val RAHU_COLOR = Color(0xFF8B0000) // Dark red for Rahu
-        private val KETU_COLOR = Color(0xFF8B0000) // Dark red for Ketu
-        private val URANUS_COLOR = Color(0xFF20B2AA) // Light sea green for Uranus
-        private val NEPTUNE_COLOR = Color(0xFF4682B4) // Steel blue for Neptune
-        private val PLUTO_COLOR = Color(0xFF800080) // Purple for Pluto
-        private val LAGNA_COLOR = Color(0xFF8B4513) // Saddle brown for Lagna marker
-
         // Status indicator symbols (matching AstroSage exactly)
         const val SYMBOL_RETROGRADE = "*"       // Retrograde motion
         const val SYMBOL_COMBUST = "^"          // Combust (too close to Sun)
@@ -138,148 +114,18 @@ class ChartRenderer {
         // Each part is 30 / 9 = 3.333... degrees, which is exactly 10/3 degrees.
         // Using a precise constant avoids floating-point inaccuracies.
         private const val NAVAMSA_PART_DEGREES = 10.0 / 3.0
-    }
 
-    /**
-     * Get color for a specific planet
-     */
-    private fun getPlanetColor(planet: Planet): Color {
-        return when (planet) {
-            Planet.SUN -> SUN_COLOR
-            Planet.MOON -> MOON_COLOR
-            Planet.MARS -> MARS_COLOR
-            Planet.MERCURY -> MERCURY_COLOR
-            Planet.JUPITER -> JUPITER_COLOR
-            Planet.VENUS -> VENUS_COLOR
-            Planet.SATURN -> SATURN_COLOR
-            Planet.RAHU -> RAHU_COLOR
-            Planet.KETU -> KETU_COLOR
-            Planet.URANUS -> URANUS_COLOR
-            Planet.NEPTUNE -> NEPTUNE_COLOR
-            Planet.PLUTO -> PLUTO_COLOR
-        }
+        private val SUPERSCRIPT_MAP = mapOf(
+            '0' to '\u2070', '1' to '\u00B9', '2' to '\u00B2', '3' to '\u00B3',
+            '4' to '\u2074', '5' to '\u2075', '6' to '\u2076', '7' to '\u2077',
+            '8' to '\u2078', '9' to '\u2079'
+        )
     }
-
     /**
      * Convert degree to superscript string
      */
     private fun toSuperscript(degree: Int): String {
-        val superscripts = mapOf(
-            '0' to '\u2070',
-            '1' to '\u00B9',
-            '2' to '\u00B2',
-            '3' to '\u00B3',
-            '4' to '\u2074',
-            '5' to '\u2075',
-            '6' to '\u2076',
-            '7' to '\u2077',
-            '8' to '\u2078',
-            '9' to '\u2079'
-        )
-        return degree.toString().map { superscripts[it] ?: it }.joinToString("")
-    }
-
-    /**
-     * Check if planet is exalted in its current sign
-     */
-    private fun isExalted(planet: Planet, sign: ZodiacSign): Boolean {
-        return when (planet) {
-            Planet.SUN -> sign == ZodiacSign.ARIES
-            Planet.MOON -> sign == ZodiacSign.TAURUS
-            Planet.MARS -> sign == ZodiacSign.CAPRICORN
-            Planet.MERCURY -> sign == ZodiacSign.VIRGO
-            Planet.JUPITER -> sign == ZodiacSign.CANCER
-            Planet.VENUS -> sign == ZodiacSign.PISCES
-            Planet.SATURN -> sign == ZodiacSign.LIBRA
-            Planet.RAHU -> sign == ZodiacSign.TAURUS || sign == ZodiacSign.GEMINI
-            Planet.KETU -> sign == ZodiacSign.SCORPIO || sign == ZodiacSign.SAGITTARIUS
-            else -> false
-        }
-    }
-
-    /**
-     * Check if planet is debilitated in its current sign
-     */
-    private fun isDebilitated(planet: Planet, sign: ZodiacSign): Boolean {
-        return when (planet) {
-            Planet.SUN -> sign == ZodiacSign.LIBRA
-            Planet.MOON -> sign == ZodiacSign.SCORPIO
-            Planet.MARS -> sign == ZodiacSign.CANCER
-            Planet.MERCURY -> sign == ZodiacSign.PISCES
-            Planet.JUPITER -> sign == ZodiacSign.CAPRICORN
-            Planet.VENUS -> sign == ZodiacSign.VIRGO
-            Planet.SATURN -> sign == ZodiacSign.ARIES
-            Planet.RAHU -> sign == ZodiacSign.SCORPIO || sign == ZodiacSign.SAGITTARIUS
-            Planet.KETU -> sign == ZodiacSign.TAURUS || sign == ZodiacSign.GEMINI
-            else -> false
-        }
-    }
-
-    /**
-     * Check if a planet is Vargottama (same sign in D1 Rashi and D9 Navamsa charts)
-     */
-    private fun isVargottama(planet: PlanetPosition, chart: VedicChart): Boolean {
-        val navamsaLongitude = calculateNavamsaLongitude(planet.longitude)
-        val navamsaSign = ZodiacSign.fromLongitude(navamsaLongitude)
-        return planet.sign == navamsaSign
-    }
-
-    /**
-     * Calculate Navamsa longitude for a given longitude
-     */
-    private fun calculateNavamsaLongitude(longitude: Double): Double {
-        val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
-        val signNumber = (normalizedLong / 30.0).toInt() // 0-11
-        val degreeInSign = normalizedLong % 30.0
-
-        val navamsaPart = (degreeInSign / NAVAMSA_PART_DEGREES).toInt().coerceIn(0, 8) // 0-8
-
-        val startingSignIndex = when (signNumber % 3) {
-            0 -> signNumber              // Movable: start from same sign
-            1 -> (signNumber + 8) % 12   // Fixed: start from 9th sign
-            2 -> (signNumber + 4) % 12   // Dual: start from 5th sign
-            else -> signNumber
-        }
-
-        val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
-
-        val positionInNavamsa = degreeInSign % NAVAMSA_PART_DEGREES
-        val navamsaDegree = (positionInNavamsa / NAVAMSA_PART_DEGREES) * 30.0
-
-        return (navamsaSignIndex * 30.0) + navamsaDegree
-    }
-
-    /**
-     * Check if a planet is combust (too close to the Sun)
-     */
-    private fun isCombust(planet: PlanetPosition, sunPosition: PlanetPosition?): Boolean {
-        if (planet.planet == Planet.SUN) return false
-        if (planet.planet in listOf(Planet.RAHU, Planet.KETU, Planet.URANUS, Planet.NEPTUNE, Planet.PLUTO)) {
-            return false
-        }
-        if (sunPosition == null) return false
-
-        val angularDistance = calculateAngularDistance(planet.longitude, sunPosition.longitude)
-
-        val combustionOrb = when (planet.planet) {
-            Planet.MOON -> 12.0
-            Planet.MARS -> 17.0
-            Planet.MERCURY -> if (planet.isRetrograde) 12.0 else 14.0
-            Planet.JUPITER -> 11.0
-            Planet.VENUS -> if (planet.isRetrograde) 8.0 else 10.0
-            Planet.SATURN -> 15.0
-            else -> 0.0
-        }
-
-        return angularDistance <= combustionOrb
-    }
-
-    /**
-     * Calculate the angular distance between two longitudes
-     */
-    private fun calculateAngularDistance(long1: Double, long2: Double): Double {
-        val diff = abs(long1 - long2)
-        return if (diff > 180.0) 360.0 - diff else diff
+        return degree.toString().map { SUPERSCRIPT_MAP[it] ?: it }.joinToString("")
     }
 
     private data class ChartFrame(
@@ -290,30 +136,29 @@ class ChartRenderer {
         val centerY: Float
     )
 
-    private fun DrawScope.drawNorthIndianFrame(
-        size: Float
-    ): ChartFrame {
-        val padding = size * 0.02f
-        val chartSize = size - (padding * 2)
-        val left = padding
-        val top = padding
-        val right = left + chartSize
-        val bottom = top + chartSize
+    private fun DrawScope.drawNorthIndianFrame(): ChartFrame {
+        val chartSize = min(size.width, size.height)
+        val padding = chartSize * 0.02f
+        val effectiveChartSize = chartSize - (padding * 2)
+        val left = (size.width - effectiveChartSize) / 2
+        val top = (size.height - effectiveChartSize) / 2
+        val right = left + effectiveChartSize
+        val bottom = top + effectiveChartSize
         val centerX = (left + right) / 2
         val centerY = (top + bottom) / 2
 
         // Background
         drawRect(
-            color = BACKGROUND_COLOR,
-            size = Size(size, size)
+            color = theme.backgroundColor,
+            size = size
         )
 
         // Outer square
         drawRect(
-            color = BORDER_COLOR,
+            color = theme.borderColor,
             topLeft = Offset(left, top),
-            size = Size(chartSize, chartSize),
-            style = borderStroke
+            size = Size(effectiveChartSize, effectiveChartSize),
+            style = theme.borderStroke
         )
 
         // Use cached path to draw all internal lines in a single operation
@@ -328,65 +173,53 @@ class ChartRenderer {
         frameLinesPath.moveTo(right, top)
         frameLinesPath.lineTo(left, bottom)
 
-        drawPath(frameLinesPath, BORDER_COLOR, style = lineStroke)
+        drawPath(frameLinesPath, theme.borderColor, style = theme.lineStroke)
 
-        return ChartFrame(left, top, chartSize, centerX, centerY)
+        return ChartFrame(left, top, effectiveChartSize, centerX, centerY)
     }
 
     /**
      * Draw a professional North Indian style Vedic chart
      */
-    fun drawNorthIndianChart(
-        drawScope: DrawScope,
-        chart: VedicChart,
-        size: Float,
-        chartTitle: String = "Lagna"
+    fun DrawScope.drawNorthIndianChart(
+        chart: VedicChart
     ) {
-        with(drawScope) {
-            val frame = drawNorthIndianFrame(size)
-            val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
+        val frame = drawNorthIndianFrame()
+        val ascendantSign = ZodiacSign.fromLongitude(chart.ascendant)
+        val renderData = chartDataProcessor.processPlanetPositions(chart.planetPositions, chart)
 
-            drawAllHouseContents(
-                left = frame.left,
-                top = frame.top,
-                chartSize = frame.size,
-                centerX = frame.centerX,
-                centerY = frame.centerY,
-                ascendantSign = ascendantSign,
-                planetPositions = chart.planetPositions,
-                size = size,
-                chart = chart
-            )
-        }
+        drawAllHouseContents(
+            left = frame.left,
+            top = frame.top,
+            chartSize = frame.size,
+            centerX = frame.centerX,
+            centerY = frame.centerY,
+            ascendantSign = ascendantSign,
+            planetPositions = renderData,
+        )
     }
 
     /**
      * Draw a divisional chart (D9, D10, etc.)
      */
-    fun drawDivisionalChart(
-        drawScope: DrawScope,
+    fun DrawScope.drawDivisionalChart(
         planetPositions: List<PlanetPosition>,
         ascendantLongitude: Double,
-        size: Float,
-        chartTitle: String,
-        originalChart: VedicChart? = null
+        originalChart: VedicChart
     ) {
-        with(drawScope) {
-            val frame = drawNorthIndianFrame(size)
-            val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
+        val frame = drawNorthIndianFrame()
+        val ascendantSign = ZodiacSign.fromLongitude(ascendantLongitude)
+        val renderData = chartDataProcessor.processPlanetPositions(planetPositions, originalChart)
 
-            drawAllHouseContents(
-                left = frame.left,
-                top = frame.top,
-                chartSize = frame.size,
-                centerX = frame.centerX,
-                centerY = frame.centerY,
-                ascendantSign = ascendantSign,
-                planetPositions = planetPositions,
-                size = size,
-                chart = originalChart
-            )
-        }
+        drawAllHouseContents(
+            left = frame.left,
+            top = frame.top,
+            chartSize = frame.size,
+            centerX = frame.centerX,
+            centerY = frame.centerY,
+            ascendantSign = ascendantSign,
+            planetPositions = renderData,
+        )
     }
 
     /**
@@ -410,16 +243,13 @@ class ChartRenderer {
         centerX: Float,
         centerY: Float,
         ascendantSign: ZodiacSign,
-        planetPositions: List<PlanetPosition>,
-        size: Float,
-        chart: VedicChart? = null,
+        planetPositions: List<PlanetRenderData>,
         showSignNumbers: Boolean = true
     ) {
         val right = left + chartSize
         val bottom = top + chartSize
 
         val planetsByHouse = planetPositions.groupBy { it.house }
-        val sunPosition = chart?.planetPositions?.find { it.planet == Planet.SUN }
 
         for (houseNum in 1..12) {
             val houseCenter = getHousePlanetCenter(houseNum, left, top, chartSize, centerX, centerY)
@@ -434,20 +264,20 @@ class ChartRenderer {
             drawTextCentered(
                 text = numberText,
                 position = numberPos,
-                textSize = size * 0.035f,
-                color = HOUSE_NUMBER_COLOR,
+                textSize = chartSize * 0.035f,
+                color = theme.houseNumberColor,
                 isBold = false
             )
 
             // Lagna marker in House 1: position it slightly above the planet center
             if (houseNum == 1) {
-                drawLagnaMarker(houseCenter, size)
+                drawLagnaMarker(houseCenter, chartSize)
             }
 
             // Planets
             val planets = planetsByHouse[houseNum] ?: emptyList()
             if (planets.isNotEmpty()) {
-                drawPlanetsInHouse(planets, houseCenter, size, houseNum, chart, sunPosition)
+                drawPlanetsInHouse(planets, houseCenter, chartSize, houseNum)
             }
         }
     }
@@ -501,19 +331,18 @@ class ChartRenderer {
         val bottom = top + chartSize
 
         return when (houseNum) {
-            // House 1 now centered horizontally in the diamond
             1 -> Offset(centerX, top + chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION)
-            2 -> Offset(centerX - chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            2 -> Offset(left + chartSize * CORNER_NUMBER_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
             3 -> Offset(left + chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
-            4 -> Offset(left + chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION - chartSize * DIAMOND_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * DIAMOND_NUMBER_VERTICAL_OFFSET_FRACTION)
+            4 -> Offset(left + chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION, centerY)
             5 -> Offset(left + chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
-            6 -> Offset(centerX - chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            6 -> Offset(left + chartSize * CORNER_NUMBER_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
             7 -> Offset(centerX, bottom - chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION)
-            8 -> Offset(centerX + chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            8 -> Offset(right - chartSize * CORNER_NUMBER_OFFSET_FRACTION, bottom - chartSize * CORNER_NUMBER_OFFSET_FRACTION)
             9 -> Offset(right - chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
-            10 -> Offset(right - chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION + chartSize * DIAMOND_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY + chartSize * DIAMOND_NUMBER_VERTICAL_OFFSET_FRACTION)
+            10 -> Offset(right - chartSize * DIAMOND_NUMBER_VERTICAL_FRACTION, centerY)
             11 -> Offset(right - chartSize * SIDE_NUMBER_HORIZONTAL_OFFSET_FRACTION, centerY - chartSize * SIDE_NUMBER_VERTICAL_OFFSET_FRACTION)
-            12 -> Offset(centerX + chartSize * CORNER_NUMBER_HORIZONTAL_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
+            12 -> Offset(right - chartSize * CORNER_NUMBER_OFFSET_FRACTION, top + chartSize * CORNER_NUMBER_OFFSET_FRACTION)
             else -> Offset(centerX, centerY)
         }
     }
@@ -537,42 +366,47 @@ class ChartRenderer {
      * Draw planets in a house
      */
     private fun DrawScope.drawPlanetsInHouse(
-        planets: List<PlanetPosition>,
+        planets: List<PlanetRenderData>,
         houseCenter: Offset,
-        size: Float,
-        houseNum: Int,
-        chart: VedicChart? = null,
-        sunPosition: PlanetPosition? = null
+        chartSize: Float,
+        houseNum: Int
     ) {
         val houseType = getHouseType(houseNum)
-        val baseTextSize = size * 0.032f
+        val planetCount = planets.size
+
+        val (columns, rows) = when (houseType) {
+            HouseType.DIAMOND -> when {
+                planetCount >= 5 -> Pair(2, (planetCount + 1) / 2)
+                else -> Pair(1, planetCount)
+            }
+            HouseType.SIDE -> when {
+                planetCount >= 4 -> Pair(2, (planetCount + 1) / 2)
+                else -> Pair(1, planetCount)
+            }
+            HouseType.CORNER -> when {
+                planetCount >= 3 -> Pair(2, (planetCount + 1) / 2)
+                else -> Pair(1, planetCount)
+            }
+        }
+
+        val baseTextSize = chartSize * 0.032f
         val textSize = when {
-            planets.size > 4 && houseType == HouseType.CORNER -> baseTextSize * 0.85f
-            planets.size > 3 && houseType == HouseType.CORNER -> baseTextSize * 0.9f
-            planets.size > 5 -> baseTextSize * 0.9f
+            planetCount > 4 && houseType == HouseType.CORNER -> baseTextSize * 0.85f
+            planetCount > 3 && houseType == HouseType.CORNER -> baseTextSize * 0.9f
+            planetCount > 5 -> baseTextSize * 0.9f
             else -> baseTextSize
         }
 
-        val baseLineHeight = size * 0.042f
-        val lineHeight = when (houseType) {
-            HouseType.CORNER -> baseLineHeight * 0.85f
-            HouseType.SIDE -> baseLineHeight * 0.9f
-            HouseType.DIAMOND -> baseLineHeight
+        val baseLineHeight = chartSize * 0.042f
+        val lineHeight = when {
+            rows > 2 -> baseLineHeight * 0.85f
+            else -> baseLineHeight
         }
-
-        val columns = when {
-            houseType == HouseType.CORNER && planets.size >= 3 -> 2
-            houseType == HouseType.SIDE && planets.size >= 4 -> 2
-            houseType == HouseType.DIAMOND && planets.size >= 5 -> 2
-            else -> 1
-        }
-
-        val itemsPerColumn = (planets.size + columns - 1) / columns
 
         val columnSpacing = when (houseType) {
-            HouseType.CORNER -> size * 0.055f
-            HouseType.SIDE -> size * 0.065f
-            HouseType.DIAMOND -> size * 0.08f
+            HouseType.DIAMOND -> chartSize * 0.08f
+            HouseType.SIDE -> chartSize * 0.065f
+            HouseType.CORNER -> chartSize * 0.055f
         }
 
         planets.forEachIndexed { index, planet ->
@@ -582,15 +416,15 @@ class ChartRenderer {
 
             val statusIndicators = buildString {
                 if (planet.isRetrograde) append(SYMBOL_RETROGRADE)
-                if (isExalted(planet.planet, planet.sign)) {
+                if (planet.isExalted) {
                     append(SYMBOL_EXALTED)
-                } else if (isDebilitated(planet.planet, planet.sign)) {
+                } else if (planet.isDebilitated) {
                     append(SYMBOL_DEBILITATED)
                 }
-                if (chart != null && isCombust(planet, sunPosition)) {
+                if (planet.isCombust) {
                     append(SYMBOL_COMBUST)
                 }
-                if (chart != null && isVargottama(planet, chart)) {
+                if (planet.isVargottama) {
                     append(SYMBOL_VARGOTTAMA)
                 }
             }
@@ -610,7 +444,7 @@ class ChartRenderer {
             val yOffset = (row - (totalRows - 1) / 2f) * lineHeight
 
             val position = Offset(houseCenter.x + xOffset, houseCenter.y + yOffset)
-            val color = getPlanetColor(planet.planet)
+            val color = theme.getPlanetColor(planet.planet)
 
             drawTextCentered(
                 text = displayText,
@@ -632,7 +466,7 @@ class ChartRenderer {
         color: Color,
         isBold: Boolean = false
     ) {
-        val typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+        val typeface = if (isBold) theme.boldTypeface else theme.normalTypeface
         if (textPaint.color != color.toArgb()) {
             textPaint.color = color.toArgb()
         }
@@ -661,7 +495,7 @@ class ChartRenderer {
             Canvas(canvas),
             Size(width.toFloat(), height.toFloat())
         ) {
-            drawNorthIndianChart(this, chart, min(width, height).toFloat())
+            drawNorthIndianChart(chart)
         }
 
         return bitmap
@@ -673,7 +507,8 @@ class ChartRenderer {
         chartTitle: String,
         width: Int,
         height: Int,
-        density: Density
+        density: Density,
+        originalChart: VedicChart
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
@@ -685,7 +520,7 @@ class ChartRenderer {
             Canvas(canvas),
             Size(width.toFloat(), height.toFloat())
         ) {
-            drawDivisionalChart(this, planetPositions, ascendantLongitude, min(width, height).toFloat(), chartTitle)
+            drawDivisionalChart(planetPositions, ascendantLongitude, originalChart)
         }
 
         return bitmap
@@ -695,12 +530,10 @@ class ChartRenderer {
      * Draws a South Indian style chart. Currently, this is a backward-compatibility alias
      * to the North Indian renderer, as a true South Indian layout is not yet implemented.
      */
-    fun drawSouthIndianChart(
-        drawScope: DrawScope,
-        chart: VedicChart,
-        size: Float
+    fun DrawScope.drawSouthIndianChart(
+        chart: VedicChart
     ) {
-        drawNorthIndianChart(drawScope, chart, size, "Lagna")
+        drawNorthIndianChart(chart)
     }
 
     fun DrawScope.drawChartLegend(
@@ -711,11 +544,11 @@ class ChartRenderer {
     ) {
         val legendY = chartBottom + textSize * 1.5f
         val legendItems = listOf(
-            Pair("$SYMBOL_RETROGRADE Retrograde", HOUSE_NUMBER_COLOR),
-            Pair("$SYMBOL_COMBUST Combust", HOUSE_NUMBER_COLOR),
-            Pair("$SYMBOL_VARGOTTAMA Vargottama", HOUSE_NUMBER_COLOR),
-            Pair("$SYMBOL_EXALTED Exalted", HOUSE_NUMBER_COLOR),
-            Pair("$SYMBOL_DEBILITATED Debilitated", HOUSE_NUMBER_COLOR)
+            Pair("$SYMBOL_RETROGRADE Retrograde", theme.houseNumberColor),
+            Pair("$SYMBOL_COMBUST Combust", theme.houseNumberColor),
+            Pair("$SYMBOL_VARGOTTAMA Vargottama", theme.houseNumberColor),
+            Pair("$SYMBOL_EXALTED Exalted", theme.houseNumberColor),
+            Pair("$SYMBOL_DEBILITATED Debilitated", theme.houseNumberColor)
         )
 
         val totalItems = legendItems.size
@@ -733,52 +566,51 @@ class ChartRenderer {
         }
     }
 
-    fun drawChartWithLegend(
-        drawScope: DrawScope,
+    fun DrawScope.drawChartWithLegend(
         chart: VedicChart,
-        size: Float,
-        chartTitle: String = "Lagna",
         showLegend: Boolean = true
     ) {
-        with(drawScope) {
-            val legendHeight = if (showLegend) size * 0.08f else 0f
-            val chartSize = size - legendHeight
+        val legendHeight = if (showLegend) size.height * 0.08f else 0f
+        val chartHeight = size.height - legendHeight
 
-            drawNorthIndianChart(this, chart, chartSize, chartTitle)
+        // A custom DrawScope to draw the chart in the upper part of the canvas
+        val chartDrawScope = object : DrawScope by this {
+            override val size: Size get() = Size(this@drawChartWithLegend.size.width, chartHeight)
+        }
+        chartDrawScope.drawNorthIndianChart(chart)
 
-            if (showLegend) {
-                val padding = chartSize * 0.02f
-                val chartBottom = chartSize - padding
-                val chartLeft = padding
-                val chartWidth = chartSize - (padding * 2)
-                val textSize = chartSize * 0.028f
+        if (showLegend) {
+            val chartSize = min(size.width, chartHeight)
+            val padding = chartSize * 0.02f
+            val chartWidth = chartSize - (padding * 2)
+            val textSize = chartSize * 0.028f
+            val legendTop = chartHeight
 
-                drawRect(
-                    color = BACKGROUND_COLOR,
-                    topLeft = Offset(0f, chartSize),
-                    size = Size(size, legendHeight)
-                )
+            drawRect(
+                color = theme.backgroundColor,
+                topLeft = Offset(0f, legendTop),
+                size = Size(size.width, legendHeight)
+            )
 
-                drawChartLegend(
-                    chartBottom = chartSize,
-                    chartLeft = padding,
-                    chartWidth = chartWidth,
-                    textSize = textSize
-                )
-            }
+            drawChartLegend(
+                chartBottom = legendTop,
+                chartLeft = padding,
+                chartWidth = chartWidth,
+                textSize = textSize
+            )
         }
     }
 
     private fun DrawScope.drawLagnaMarker(
         houseCenter: Offset,
-        size: Float
+        chartSize: Float
     ) {
-        val textSize = size * 0.035f
+        val textSize = chartSize * 0.035f
         drawTextCentered(
             text = "La",
-            position = Offset(houseCenter.x, houseCenter.y - size * 0.06f),
+            position = Offset(houseCenter.x, houseCenter.y - chartSize * 0.06f),
             textSize = textSize,
-            color = LAGNA_COLOR,
+            color = theme.lagnaColor,
             isBold = true
         )
     }
