@@ -138,21 +138,19 @@ fun FullScreenChartDialog(
                 ) {
                     if (divisionalChartData != null) {
                         // Pass original chart for vargottama and combust status checking
-                        chartRenderer.drawDivisionalChart(
-                            drawScope = this,
-                            planetPositions = divisionalChartData.planetPositions,
-                            ascendantLongitude = divisionalChartData.ascendantLongitude,
-                            size = size.minDimension,
-                            chartTitle = chartTitle,
-                            originalChart = chart
-                        )
+                        with(chartRenderer) {
+                            drawDivisionalChart(
+                                planetPositions = divisionalChartData.planetPositions,
+                                ascendantLongitude = divisionalChartData.ascendantLongitude,
+                                originalChart = chart
+                            )
+                        }
                     } else {
-                        chartRenderer.drawNorthIndianChart(
-                            drawScope = this,
-                            chart = chart,
-                            size = size.minDimension,
-                            chartTitle = chartTitle
-                        )
+                        with(chartRenderer) {
+                            drawNorthIndianChart(
+                                chart = chart
+                            )
+                        }
                     }
                 }
             }
@@ -325,7 +323,8 @@ private suspend fun saveChartToGallery(
                 chartTitle = chartTitle,
                 width = size,
                 height = size,
-                density = density
+                density = density,
+                originalChart = chart
             )
         } else {
             chartRenderer.createChartBitmap(chart, size, size, density)

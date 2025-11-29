@@ -440,7 +440,7 @@ class ChartRenderer(
                 0f
             }
 
-            val totalRows = if (columns > 1) itemsPerColumn else planets.size
+            val totalRows = if (columns > 1) rows else planets.size
             val yOffset = (row - (totalRows - 1) / 2f) * lineHeight
 
             val position = Offset(houseCenter.x + xOffset, houseCenter.y + yOffset)

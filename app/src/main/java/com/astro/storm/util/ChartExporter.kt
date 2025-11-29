@@ -233,7 +233,8 @@ class ChartExporter(private val context: Context) {
                 navamsaData.planetPositions,
                 navamsaData.ascendantLongitude,
                 "Navamsa",
-                250, 250, density
+                250, 250, density,
+                originalChart = chart
             )
             val navamsaX = (options.pageSize.width - 250) / 2f
             canvas.drawBitmap(navamsaBitmap, navamsaX, yPos, null)

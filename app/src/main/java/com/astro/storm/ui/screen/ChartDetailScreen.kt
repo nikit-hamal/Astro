@@ -713,23 +713,21 @@ private fun ChartTabContent(
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             if (selectedChartType == "D1") {
-                                chartRenderer.drawNorthIndianChart(
-                                    drawScope = this,
-                                    chart = chart,
-                                    size = size.minDimension,
-                                    chartTitle = "Lagna"
-                                )
+                                with(chartRenderer) {
+                                    drawNorthIndianChart(
+                                        chart = chart
+                                    )
+                                }
                             } else {
                                 currentChartData?.let {
                                     // Pass original chart for vargottama and combust status checking
-                                    chartRenderer.drawDivisionalChart(
-                                        drawScope = this,
-                                        planetPositions = it.planetPositions,
-                                        ascendantLongitude = it.ascendantLongitude,
-                                        size = size.minDimension,
-                                        chartTitle = chartInfo.third,
-                                        originalChart = chart
-                                    )
+                                    with(chartRenderer) {
+                                        drawDivisionalChart(
+                                            planetPositions = it.planetPositions,
+                                            ascendantLongitude = it.ascendantLongitude,
+                                            originalChart = chart
+                                        )
+                                    }
                                 }
                             }
                         }
