@@ -35,15 +35,12 @@ class SwissEphemerisEngine(context: Context) {
         ephemerisPath = context.filesDir.absolutePath + "/ephe"
         File(ephemerisPath).mkdirs()
 
-        // Copy ephemeris files from assets if needed
-        copyEphemerisFiles(context)
-
         // Initialize Swiss Ephemeris with JPL mode
         swissEph.swe_set_ephe_path(ephemerisPath)
         swissEph.swe_set_sid_mode(AYANAMSA_LAHIRI, 0.0, 0.0)
     }
 
-    private fun copyEphemerisFiles(context: Context) {
+    fun copyEphemerisFiles(context: Context) {
         try {
             val assetManager = context.assets
             val ephemerisFiles = try {
@@ -141,24 +138,15 @@ class SwissEphemerisEngine(context: Context) {
         val xx = DoubleArray(6)
         val serr = StringBuffer()
 
-        val iflgret = if (planet == Planet.KETU) {
-            // Ketu is 180° opposite to Rahu
-            swissEph.swe_calc_ut(
-                julianDay,
-                Planet.RAHU.swissEphId,
-                CALC_FLAGS,
-                xx,
-                serr
-            )
-        } else {
-            swissEph.swe_calc_ut(
-                julianDay,
-                planet.swissEphId,
-                CALC_FLAGS,
-                xx,
-                serr
-            )
-        }
+        val planetId = if (planet == Planet.KETU) Planet.RAHU.swissEphId else planet.swissEphId
+
+        val iflgret = swissEph.swe_calc_ut(
+            julianDay,
+            planetId,
+            CALC_FLAGS,
+            xx,
+            serr
+        )
 
         if (iflgret < 0) {
             throw RuntimeException("Swiss Ephemeris calculation error: $serr")

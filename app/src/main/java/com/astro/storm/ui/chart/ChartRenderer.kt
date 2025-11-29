@@ -238,12 +238,17 @@ class ChartRenderer {
     /**
      * Calculate Navamsa longitude for a given longitude
      */
+    // Each sign is 30 degrees, divided into 9 Navamsa parts.
+    // Each part is 30 / 9 = 3.333... degrees, which is exactly 10/3 degrees.
+    // Using a precise constant avoids floating-point inaccuracies.
+    private const val NAVAMSA_PART_DEGREES = 10.0 / 3.0
+
     private fun calculateNavamsaLongitude(longitude: Double): Double {
         val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
         val signNumber = (normalizedLong / 30.0).toInt() // 0-11
         val degreeInSign = normalizedLong % 30.0
 
-        val navamsaPart = (degreeInSign / 3.333333333).toInt().coerceIn(0, 8) // 0-8
+        val navamsaPart = (degreeInSign / NAVAMSA_PART_DEGREES).toInt().coerceIn(0, 8) // 0-8
 
         val startingSignIndex = when (signNumber % 3) {
             0 -> signNumber              // Movable: start from same sign
@@ -254,8 +259,8 @@ class ChartRenderer {
 
         val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
 
-        val positionInNavamsa = degreeInSign % 3.333333333
-        val navamsaDegree = (positionInNavamsa / 3.333333333) * 30.0
+        val positionInNavamsa = degreeInSign % NAVAMSA_PART_DEGREES
+        val navamsaDegree = (positionInNavamsa / NAVAMSA_PART_DEGREES) * 30.0
 
         return (navamsaSignIndex * 30.0) + navamsaDegree
     }

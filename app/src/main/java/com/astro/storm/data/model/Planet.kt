@@ -19,7 +19,7 @@ enum class Planet(val swissEphId: Int, val displayName: String, val symbol: Stri
     JUPITER(5, "Jupiter", "Ju"),
     SATURN(6, "Saturn", "Sa"),
     RAHU(11, "Rahu", "Ra"),  // Mean node (North Node)
-    KETU(11, "Ketu", "Ke"),  // 180° from Rahu (South Node)
+    KETU(-1, "Ketu", "Ke"),  // 180° from Rahu (South Node)
     URANUS(7, "Uranus", "Ur"),
     NEPTUNE(8, "Neptune", "Ne"),
     PLUTO(9, "Pluto", "Pl");
