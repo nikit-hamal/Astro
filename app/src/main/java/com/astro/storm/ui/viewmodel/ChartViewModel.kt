@@ -13,6 +13,7 @@ import com.astro.storm.data.repository.ChartRepository
 import com.astro.storm.data.repository.SavedChart
 import com.astro.storm.ephemeris.SwissEphemerisEngine
 import com.astro.storm.ui.chart.ChartRenderer
+import com.astro.storm.util.ChartExporter
 import com.astro.storm.util.ExportUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -28,6 +29,7 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ChartRepository
     private val ephemerisEngine: SwissEphemerisEngine
     private val chartRenderer = ChartRenderer()
+    private val chartExporter: ChartExporter
 
     private val _uiState = MutableStateFlow<ChartUiState>(ChartUiState.Initial)
     val uiState: StateFlow<ChartUiState> = _uiState.asStateFlow()
@@ -39,6 +41,7 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
         val database = ChartDatabase.getInstance(application)
         repository = ChartRepository(database.chartDao())
         ephemerisEngine = SwissEphemerisEngine(application)
+        chartExporter = ChartExporter(application)
 
         loadSavedCharts()
     }
@@ -155,6 +158,124 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Export chart to PDF with comprehensive report
+     */
+    fun exportChartToPdf(
+        chart: VedicChart,
+        density: Density,
+        options: ChartExporter.PdfExportOptions = ChartExporter.PdfExportOptions()
+    ) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = ChartUiState.Exporting("Generating PDF report...")
+                val result = chartExporter.exportToPdf(chart, options, density)
+                when (result) {
+                    is ChartExporter.ExportResult.Success -> {
+                        _uiState.value = ChartUiState.Exported("PDF saved successfully")
+                    }
+                    is ChartExporter.ExportResult.Error -> {
+                        _uiState.value = ChartUiState.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = ChartUiState.Error("PDF export failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Export chart to JSON
+     */
+    fun exportChartToJson(chart: VedicChart) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = ChartUiState.Exporting("Generating JSON...")
+                val result = chartExporter.exportToJson(chart)
+                when (result) {
+                    is ChartExporter.ExportResult.Success -> {
+                        _uiState.value = ChartUiState.Exported("JSON saved successfully")
+                    }
+                    is ChartExporter.ExportResult.Error -> {
+                        _uiState.value = ChartUiState.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = ChartUiState.Error("JSON export failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Export chart to CSV
+     */
+    fun exportChartToCsv(chart: VedicChart) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = ChartUiState.Exporting("Generating CSV...")
+                val result = chartExporter.exportToCsv(chart)
+                when (result) {
+                    is ChartExporter.ExportResult.Success -> {
+                        _uiState.value = ChartUiState.Exported("CSV saved successfully")
+                    }
+                    is ChartExporter.ExportResult.Error -> {
+                        _uiState.value = ChartUiState.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = ChartUiState.Error("CSV export failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Export chart as high-quality image with options
+     */
+    fun exportChartToImage(
+        chart: VedicChart,
+        density: Density,
+        options: ChartExporter.ImageExportOptions = ChartExporter.ImageExportOptions()
+    ) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = ChartUiState.Exporting("Generating image...")
+                val result = chartExporter.exportToImage(chart, options, density)
+                when (result) {
+                    is ChartExporter.ExportResult.Success -> {
+                        _uiState.value = ChartUiState.Exported("Image saved successfully")
+                    }
+                    is ChartExporter.ExportResult.Error -> {
+                        _uiState.value = ChartUiState.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = ChartUiState.Error("Image export failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Export chart as plain text report
+     */
+    fun exportChartToText(chart: VedicChart) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = ChartUiState.Exporting("Generating text report...")
+                val result = chartExporter.exportToText(chart)
+                when (result) {
+                    is ChartExporter.ExportResult.Success -> {
+                        _uiState.value = ChartUiState.Exported("Text report saved successfully")
+                    }
+                    is ChartExporter.ExportResult.Error -> {
+                        _uiState.value = ChartUiState.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = ChartUiState.Error("Text export failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Reset UI state
      */
     fun resetState() {
@@ -177,5 +298,6 @@ sealed class ChartUiState {
     data class Success(val chart: VedicChart) : ChartUiState()
     data class Error(val message: String) : ChartUiState()
     object Saved : ChartUiState()
+    data class Exporting(val message: String) : ChartUiState()
     data class Exported(val message: String) : ChartUiState()
 }
