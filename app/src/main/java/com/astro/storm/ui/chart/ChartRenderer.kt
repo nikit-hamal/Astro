@@ -97,6 +97,10 @@ class ChartRenderer {
         isSubpixelText = true
     }
 
+    private val borderStroke = Stroke(width = 3f)
+    private val lineStroke = Stroke(width = 2.5f)
+    private val frameLinesPath = Path()
+
 
     companion object {
         // Typefaces for text rendering
@@ -309,24 +313,22 @@ class ChartRenderer {
             color = BORDER_COLOR,
             topLeft = Offset(left, top),
             size = Size(chartSize, chartSize),
-            style = Stroke(width = 3f)
+            style = borderStroke
         )
 
-        // Midpoints (diamond)
-        val midTop = Offset(centerX, top)
-        val midRight = Offset(right, centerY)
-        val midBottom = Offset(centerX, bottom)
-        val midLeft = Offset(left, centerY)
+        // Use cached path to draw all internal lines in a single operation
+        frameLinesPath.reset()
+        frameLinesPath.moveTo(centerX, top)
+        frameLinesPath.lineTo(right, centerY)
+        frameLinesPath.lineTo(centerX, bottom)
+        frameLinesPath.lineTo(left, centerY)
+        frameLinesPath.close()
+        frameLinesPath.moveTo(left, top)
+        frameLinesPath.lineTo(right, bottom)
+        frameLinesPath.moveTo(right, top)
+        frameLinesPath.lineTo(left, bottom)
 
-        // Central diamond
-        drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
-
-        // Corner diagonals
-        drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
+        drawPath(frameLinesPath, BORDER_COLOR, style = lineStroke)
 
         return ChartFrame(left, top, chartSize, centerX, centerY)
     }
@@ -630,11 +632,18 @@ class ChartRenderer {
         color: Color,
         isBold: Boolean = false
     ) {
-        drawContext.canvas.nativeCanvas.apply {
+        val typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+        if (textPaint.color != color.toArgb()) {
             textPaint.color = color.toArgb()
+        }
+        if (textPaint.textSize != textSize) {
             textPaint.textSize = textSize
-            textPaint.typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+        }
+        if (textPaint.typeface != typeface) {
+            textPaint.typeface = typeface
+        }
 
+        drawContext.canvas.nativeCanvas.apply {
             val textHeight = textPaint.descent() - textPaint.ascent()
             val textOffset = textHeight / 2 - textPaint.descent()
             drawText(text, position.x, position.y + textOffset, textPaint)
