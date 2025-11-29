@@ -15,6 +15,10 @@ data class VedicChart(
     val houseSystem: HouseSystem,
     val calculationTime: Long = System.currentTimeMillis()
 ) {
+    val planetsByHouse: Map<Int, List<PlanetPosition>> by lazy {
+        planetPositions.groupBy { it.house }
+    }
+
     fun toPlainText(): String {
         return buildString {
             appendLine("═══════════════════════════════════════════════════════════")

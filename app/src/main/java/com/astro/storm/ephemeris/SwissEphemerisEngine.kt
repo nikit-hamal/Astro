@@ -35,20 +35,18 @@ class SwissEphemerisEngine(context: Context) {
         ephemerisPath = context.filesDir.absolutePath + "/ephe"
         File(ephemerisPath).mkdirs()
 
-        // Copy ephemeris files from assets if needed
-        copyEphemerisFiles(context)
-
         // Initialize Swiss Ephemeris with JPL mode
         swissEph.swe_set_ephe_path(ephemerisPath)
         swissEph.swe_set_sid_mode(AYANAMSA_LAHIRI, 0.0, 0.0)
     }
 
-    private fun copyEphemerisFiles(context: Context) {
+    fun copyEphemerisFiles(context: Context) {
         try {
             val assetManager = context.assets
             val ephemerisFiles = try {
                 assetManager.list("ephe") ?: emptyArray()
-            } catch (e: Exception) {
+            } catch (e: java.io.IOException) {
+                android.util.Log.e("SwissEphemeris", "Could not list ephemeris assets", e)
                 emptyArray()
             }
 
@@ -62,9 +60,9 @@ class SwissEphemerisEngine(context: Context) {
                     }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: java.io.IOException) {
             // Ephemeris files are optional; calculations will use less precise methods if unavailable
-            android.util.Log.w("SwissEphemeris", "Could not copy ephemeris files: ${e.message}")
+            android.util.Log.e("SwissEphemeris", "Could not copy ephemeris files", e)
         }
     }
 
@@ -141,24 +139,15 @@ class SwissEphemerisEngine(context: Context) {
         val xx = DoubleArray(6)
         val serr = StringBuffer()
 
-        val iflgret = if (planet == Planet.KETU) {
-            // Ketu is 180° opposite to Rahu
-            swissEph.swe_calc_ut(
-                julianDay,
-                Planet.RAHU.swissEphId,
-                CALC_FLAGS,
-                xx,
-                serr
-            )
-        } else {
-            swissEph.swe_calc_ut(
-                julianDay,
-                planet.swissEphId,
-                CALC_FLAGS,
-                xx,
-                serr
-            )
-        }
+        val planetId = if (planet == Planet.KETU) Planet.RAHU.swissEphId else planet.swissEphId
+
+        val iflgret = swissEph.swe_calc_ut(
+            julianDay,
+            planetId,
+            CALC_FLAGS,
+            xx,
+            serr
+        )
 
         if (iflgret < 0) {
             throw RuntimeException("Swiss Ephemeris calculation error: $serr")

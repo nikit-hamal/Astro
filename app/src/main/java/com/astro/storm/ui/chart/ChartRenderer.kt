@@ -97,6 +97,10 @@ class ChartRenderer {
         isSubpixelText = true
     }
 
+    private val borderStroke = Stroke(width = 3f)
+    private val lineStroke = Stroke(width = 2.5f)
+    private val frameLinesPath = Path()
+
 
     companion object {
         // Typefaces for text rendering
@@ -129,6 +133,11 @@ class ChartRenderer {
         const val SYMBOL_VARGOTTAMA = "\u00A4"  // ¤ - Vargottama (same sign in D1 and D9)
         const val SYMBOL_EXALTED = "\u2191"     // ↑ - Exalted
         const val SYMBOL_DEBILITATED = "\u2193" // ↓ - Debilitated
+
+        // Each sign is 30 degrees, divided into 9 Navamsa parts.
+        // Each part is 30 / 9 = 3.333... degrees, which is exactly 10/3 degrees.
+        // Using a precise constant avoids floating-point inaccuracies.
+        private const val NAVAMSA_PART_DEGREES = 10.0 / 3.0
     }
 
     /**
@@ -148,26 +157,6 @@ class ChartRenderer {
             Planet.URANUS -> URANUS_COLOR
             Planet.NEPTUNE -> NEPTUNE_COLOR
             Planet.PLUTO -> PLUTO_COLOR
-        }
-    }
-
-    /**
-     * Get abbreviated name for planet (2-3 characters)
-     */
-    private fun getPlanetAbbreviation(planet: Planet): String {
-        return when (planet) {
-            Planet.SUN -> "Su"
-            Planet.MOON -> "Mo"
-            Planet.MARS -> "Ma"
-            Planet.MERCURY -> "Me"
-            Planet.JUPITER -> "Ju"
-            Planet.VENUS -> "Ve"
-            Planet.SATURN -> "Sa"
-            Planet.RAHU -> "Ra"
-            Planet.KETU -> "Ke"
-            Planet.URANUS -> "Ur"
-            Planet.NEPTUNE -> "Ne"
-            Planet.PLUTO -> "Pl"
         }
     }
 
@@ -243,7 +232,7 @@ class ChartRenderer {
         val signNumber = (normalizedLong / 30.0).toInt() // 0-11
         val degreeInSign = normalizedLong % 30.0
 
-        val navamsaPart = (degreeInSign / 3.333333333).toInt().coerceIn(0, 8) // 0-8
+        val navamsaPart = (degreeInSign / NAVAMSA_PART_DEGREES).toInt().coerceIn(0, 8) // 0-8
 
         val startingSignIndex = when (signNumber % 3) {
             0 -> signNumber              // Movable: start from same sign
@@ -254,8 +243,8 @@ class ChartRenderer {
 
         val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
 
-        val positionInNavamsa = degreeInSign % 3.333333333
-        val navamsaDegree = (positionInNavamsa / 3.333333333) * 30.0
+        val positionInNavamsa = degreeInSign % NAVAMSA_PART_DEGREES
+        val navamsaDegree = (positionInNavamsa / NAVAMSA_PART_DEGREES) * 30.0
 
         return (navamsaSignIndex * 30.0) + navamsaDegree
     }
@@ -324,24 +313,22 @@ class ChartRenderer {
             color = BORDER_COLOR,
             topLeft = Offset(left, top),
             size = Size(chartSize, chartSize),
-            style = Stroke(width = 3f)
+            style = borderStroke
         )
 
-        // Midpoints (diamond)
-        val midTop = Offset(centerX, top)
-        val midRight = Offset(right, centerY)
-        val midBottom = Offset(centerX, bottom)
-        val midLeft = Offset(left, centerY)
+        // Use cached path to draw all internal lines in a single operation
+        frameLinesPath.reset()
+        frameLinesPath.moveTo(centerX, top)
+        frameLinesPath.lineTo(right, centerY)
+        frameLinesPath.lineTo(centerX, bottom)
+        frameLinesPath.lineTo(left, centerY)
+        frameLinesPath.close()
+        frameLinesPath.moveTo(left, top)
+        frameLinesPath.lineTo(right, bottom)
+        frameLinesPath.moveTo(right, top)
+        frameLinesPath.lineTo(left, bottom)
 
-        // Central diamond
-        drawLine(BORDER_COLOR, midTop, midRight, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midRight, midBottom, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midBottom, midLeft, strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, midLeft, midTop, strokeWidth = 2.5f)
-
-        // Corner diagonals
-        drawLine(BORDER_COLOR, Offset(left, top), Offset(right, bottom), strokeWidth = 2.5f)
-        drawLine(BORDER_COLOR, Offset(right, top), Offset(left, bottom), strokeWidth = 2.5f)
+        drawPath(frameLinesPath, BORDER_COLOR, style = lineStroke)
 
         return ChartFrame(left, top, chartSize, centerX, centerY)
     }
@@ -589,7 +576,7 @@ class ChartRenderer {
         }
 
         planets.forEachIndexed { index, planet ->
-            val abbrev = getPlanetAbbreviation(planet.planet)
+            val abbrev = planet.planet.symbol
             val degree = (planet.longitude % 30.0).toInt()
             val degreeSuper = toSuperscript(degree)
 
@@ -645,11 +632,18 @@ class ChartRenderer {
         color: Color,
         isBold: Boolean = false
     ) {
-        drawContext.canvas.nativeCanvas.apply {
+        val typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+        if (textPaint.color != color.toArgb()) {
             textPaint.color = color.toArgb()
+        }
+        if (textPaint.textSize != textSize) {
             textPaint.textSize = textSize
-            textPaint.typeface = if (isBold) TYPEFACE_BOLD else TYPEFACE_NORMAL
+        }
+        if (textPaint.typeface != typeface) {
+            textPaint.typeface = typeface
+        }
 
+        drawContext.canvas.nativeCanvas.apply {
             val textHeight = textPaint.descent() - textPaint.ascent()
             val textOffset = textHeight / 2 - textPaint.descent()
             drawText(text, position.x, position.y + textOffset, textPaint)
