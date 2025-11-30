@@ -115,7 +115,7 @@ class ChartRenderer {
         // Planet-specific colors matching AstroSage style
         private val SUN_COLOR = Color(0xFFD2691E) // Chocolate/orange for Sun
         private val MOON_COLOR = Color(0xFFDC143C) // Crimson for Moon
-        private val MARS_COLOR = Color(0xFFDC143C) // Red for Mars
+        private val MARS_COLOR = Color(0xFFB22222) // Firebrick red for Mars
         private val MERCURY_COLOR = Color(0xFF228B22) // Forest green for Mercury
         private val JUPITER_COLOR = Color(0xFFDAA520) // Goldenrod for Jupiter
         private val VENUS_COLOR = Color(0xFF9370DB) // Medium purple for Venus
@@ -191,8 +191,8 @@ class ChartRenderer {
             Planet.JUPITER -> sign == ZodiacSign.CANCER
             Planet.VENUS -> sign == ZodiacSign.PISCES
             Planet.SATURN -> sign == ZodiacSign.LIBRA
-            Planet.RAHU -> sign == ZodiacSign.TAURUS || sign == ZodiacSign.GEMINI
-            Planet.KETU -> sign == ZodiacSign.SCORPIO || sign == ZodiacSign.SAGITTARIUS
+            Planet.RAHU -> sign == ZodiacSign.TAURUS
+            Planet.KETU -> sign == ZodiacSign.SCORPIO
             else -> false
         }
     }
@@ -229,16 +229,15 @@ class ChartRenderer {
      */
     private fun calculateNavamsaLongitude(longitude: Double): Double {
         val normalizedLong = ((longitude % 360.0) + 360.0) % 360.0
-        val signNumber = (normalizedLong / 30.0).toInt() // 0-11
+        val sign = ZodiacSign.fromLongitude(normalizedLong)
         val degreeInSign = normalizedLong % 30.0
 
         val navamsaPart = (degreeInSign / NAVAMSA_PART_DEGREES).toInt().coerceIn(0, 8) // 0-8
 
-        val startingSignIndex = when (signNumber % 3) {
-            0 -> signNumber              // Movable: start from same sign
-            1 -> (signNumber + 8) % 12   // Fixed: start from 9th sign
-            2 -> (signNumber + 4) % 12   // Dual: start from 5th sign
-            else -> signNumber
+        val startingSignIndex = when (sign.quality) {
+            ZodiacSign.Quality.CARDINAL -> sign.ordinal
+            ZodiacSign.Quality.FIXED -> (sign.ordinal + 8) % 12
+            ZodiacSign.Quality.MUTABLE -> (sign.ordinal + 4) % 12
         }
 
         val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
