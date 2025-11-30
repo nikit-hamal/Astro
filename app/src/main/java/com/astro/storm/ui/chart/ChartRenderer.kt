@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import com.astro.storm.data.model.Planet
 import com.astro.storm.data.model.PlanetPosition
+import com.astro.storm.data.model.Quality
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.data.model.ZodiacSign
 import kotlin.math.abs
@@ -235,9 +236,9 @@ class ChartRenderer {
         val navamsaPart = (degreeInSign / NAVAMSA_PART_DEGREES).toInt().coerceIn(0, 8) // 0-8
 
         val startingSignIndex = when (sign.quality) {
-            ZodiacSign.Quality.CARDINAL -> sign.ordinal
-            ZodiacSign.Quality.FIXED -> (sign.ordinal + 8) % 12
-            ZodiacSign.Quality.MUTABLE -> (sign.ordinal + 4) % 12
+            Quality.CARDINAL -> sign.ordinal
+            Quality.FIXED -> (sign.ordinal + 8) % 12
+            Quality.MUTABLE -> (sign.ordinal + 4) % 12
         }
 
         val navamsaSignIndex = (startingSignIndex + navamsaPart) % 12
