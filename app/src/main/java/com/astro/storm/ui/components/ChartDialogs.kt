@@ -140,18 +140,15 @@ fun FullScreenChartDialog(
                         // Pass original chart for vargottama and combust status checking
                         chartRenderer.drawDivisionalChart(
                             drawScope = this,
-                            planetPositions = divisionalChartData.planetPositions,
-                            ascendantLongitude = divisionalChartData.ascendantLongitude,
+                            chart = chart,
                             size = size.minDimension,
-                            chartTitle = chartTitle,
-                            originalChart = chart
+                            chartTitle = chartTitle
                         )
                     } else {
                         chartRenderer.drawNorthIndianChart(
                             drawScope = this,
                             chart = chart,
-                            size = size.minDimension,
-                            chartTitle = chartTitle
+                            size = size.minDimension
                         )
                     }
                 }
@@ -320,8 +317,7 @@ private suspend fun saveChartToGallery(
         val size = 2048
         val bitmap = if (divisionalChartData != null) {
             chartRenderer.createDivisionalChartBitmap(
-                planetPositions = divisionalChartData.planetPositions,
-                ascendantLongitude = divisionalChartData.ascendantLongitude,
+                chart = chart,
                 chartTitle = chartTitle,
                 width = size,
                 height = size,

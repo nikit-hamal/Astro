@@ -120,7 +120,7 @@ fun ChartDetailScreen(
     val density = LocalDensity.current
 
     var currentChart by remember { mutableStateOf<VedicChart?>(null) }
-    var selectedTab by remember { mutableStateOf(ChartTab.CHART) }
+    var selectedTab by remember { mutableStateOf<ChartTab>(ChartTab.CHART) }
 
     // Dialog states
     var showFullScreenChart by remember { mutableStateOf(false) }
@@ -716,19 +716,16 @@ private fun ChartTabContent(
                                 chartRenderer.drawNorthIndianChart(
                                     drawScope = this,
                                     chart = chart,
-                                    size = size.minDimension,
-                                    chartTitle = "Lagna"
+                                    size = size.minDimension
                                 )
                             } else {
                                 currentChartData?.let {
                                     // Pass original chart for vargottama and combust status checking
                                     chartRenderer.drawDivisionalChart(
                                         drawScope = this,
-                                        planetPositions = it.planetPositions,
-                                        ascendantLongitude = it.ascendantLongitude,
+                                        chart = chart,
                                         size = size.minDimension,
-                                        chartTitle = chartInfo.third,
-                                        originalChart = chart
+                                        chartTitle = chartInfo.third
                                     )
                                 }
                             }
