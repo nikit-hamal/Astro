@@ -47,6 +47,7 @@ fun AppScreen(
                                 Screen.Home -> Icon(Icons.Default.Home, contentDescription = null)
                                 Screen.Insights -> Icon(Icons.Default.Info, contentDescription = null)
                                 Screen.Settings -> Icon(Icons.Default.Settings, contentDescription = null)
+                                else -> {}
                             }
                         },
                         label = { Text(screen.route.replaceFirstChar { it.uppercase() }) },

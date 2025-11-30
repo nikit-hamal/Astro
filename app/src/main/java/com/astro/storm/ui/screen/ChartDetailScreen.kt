@@ -80,7 +80,7 @@ fun ChartDetailScreen(
                         ChartCard(chart = chart, chartRenderer = chartRenderer)
                     }
                     item {
-                        PlanetsTabContent(chart = chart, onPlanetClick = {}, onNakshatraClick = {_,_ ->})
+                        PlanetsTabContent(chart = chart, onPlanetClick = {}, onShadbalaClick = {})
                     }
                     item {
                         YogasTabContent(chart = chart)

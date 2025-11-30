@@ -74,7 +74,7 @@ fun InsightsScreen() {
         LazyColumn(
             modifier = Modifier.padding(paddingValues),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedby(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 CurrentPlanetaryPeriod(mockData.currentPlanetaryPeriod)
