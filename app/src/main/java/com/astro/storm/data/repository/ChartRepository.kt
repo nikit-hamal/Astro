@@ -33,6 +33,10 @@ class ChartRepository(private val chartDao: ChartDao) {
         chartDao.deleteChartById(id)
     }
 
+    suspend fun setSelectedChart(chartId: Long) {
+        chartDao.setSelectedChart(chartId)
+    }
+
     fun searchCharts(query: String): Flow<List<SavedChart>> {
         return chartDao.searchCharts(query).map { entities ->
             entities.map { it.toSavedChart() }
@@ -137,7 +141,8 @@ class ChartRepository(private val chartDao: ChartDao) {
             name = name,
             dateTime = dateTime,
             location = location,
-            createdAt = createdAt
+            createdAt = createdAt,
+            isSelected = isSelected
         )
     }
 }
@@ -150,5 +155,6 @@ data class SavedChart(
     val name: String,
     val dateTime: String,
     val location: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSelected: Boolean = false
 )

@@ -26,5 +26,6 @@ data class ChartEntity(
     val planetPositionsJson: String,
     val houseCuspsJson: String,
     val houseSystem: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isSelected: Boolean = false
 )
