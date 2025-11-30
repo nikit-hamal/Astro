@@ -62,8 +62,8 @@ import java.time.temporal.ChronoUnit
  */
 @Composable
 fun DashasTabContent(chart: VedicChart) {
-    val dashaAnalysis = remember(chart) {
-        DashaCalculator.calculateVimshottariDasha(chart)
+    val dashaTimeline = remember(chart) {
+        DashaCalculator.calculateDashaTimeline(chart)
     }
 
     LazyColumn(
@@ -72,17 +72,17 @@ fun DashasTabContent(chart: VedicChart) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            CurrentPeriodCard(dashaAnalysis)
+            CurrentPeriodCard(dashaTimeline)
         }
 
         item {
-            DashaTimelineCard(dashaAnalysis)
+            DashaTimelineCard(dashaTimeline)
         }
 
-        items(dashaAnalysis.mahadashas) { mahadasha ->
+        items(dashaTimeline.mahadashas) { mahadasha ->
             MahadashaCard(
                 mahadasha = mahadasha,
-                isCurrentMahadasha = mahadasha == dashaAnalysis.currentMahadasha
+                isCurrentMahadasha = mahadasha == dashaTimeline.currentMahadasha
             )
         }
 
@@ -93,10 +93,10 @@ fun DashasTabContent(chart: VedicChart) {
 }
 
 @Composable
-private fun CurrentPeriodCard(analysis: DashaCalculator.DashaAnalysis) {
-    val currentMahadasha = analysis.currentMahadasha
-    val currentAntardasha = analysis.currentAntardasha
-    val currentPratyantardasha = analysis.currentPratyantardasha
+private fun CurrentPeriodCard(timeline: DashaCalculator.DashaTimeline) {
+    val currentMahadasha = timeline.currentMahadasha
+    val currentAntardasha = timeline.currentAntardasha
+    val currentPratyantardasha = timeline.currentPratyantardasha
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -257,8 +257,8 @@ private fun DashaPeriodRow(
 
 @Composable
 private fun CurrentPeriodSummary(
-    mahadasha: DashaCalculator.MahaDasha,
-    antardasha: DashaCalculator.AntarDasha?
+    mahadasha: DashaCalculator.Mahadasha,
+    antardasha: DashaCalculator.Antardasha?
 ) {
     val interpretation = getDashaPeriodInterpretation(
         mahadasha.planet,
@@ -289,7 +289,7 @@ private fun CurrentPeriodSummary(
 }
 
 @Composable
-private fun DashaTimelineCard(analysis: DashaCalculator.DashaAnalysis) {
+private fun DashaTimelineCard(timeline: DashaCalculator.DashaTimeline) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -318,7 +318,7 @@ private fun DashaTimelineCard(analysis: DashaCalculator.DashaAnalysis) {
             val today = LocalDate.now()
             val dateFormatter = DateTimeFormatter.ofPattern("yyyy")
 
-            analysis.mahadashas.forEach { dasha ->
+            timeline.mahadashas.forEach { dasha ->
                 val isPast = dasha.endDate.isBefore(today)
                 val isCurrent = !dasha.startDate.isAfter(today) && !dasha.endDate.isBefore(today)
                 val planetColor = ChartDetailColors.getPlanetColor(dasha.planet)
@@ -360,7 +360,7 @@ private fun DashaTimelineCard(analysis: DashaCalculator.DashaAnalysis) {
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = "${dasha.years.toInt()} yrs",
+                        text = "${dasha.durationYears.toInt()} yrs",
                         fontSize = 11.sp,
                         color = ChartDetailColors.TextMuted
                     )
@@ -372,7 +372,7 @@ private fun DashaTimelineCard(analysis: DashaCalculator.DashaAnalysis) {
 
 @Composable
 private fun MahadashaCard(
-    mahadasha: DashaCalculator.MahaDasha,
+    mahadasha: DashaCalculator.Mahadasha,
     isCurrentMahadasha: Boolean
 ) {
     var expanded by remember { mutableStateOf(isCurrentMahadasha) }
@@ -444,7 +444,7 @@ private fun MahadashaCard(
                             }
                         }
                         Text(
-                            text = "${mahadasha.years.toInt()} years • ${mahadasha.startDate.format(dateFormatter)} - ${mahadasha.endDate.format(dateFormatter)}",
+                            text = "${mahadasha.durationYears.toInt()} years • ${mahadasha.startDate.format(dateFormatter)} - ${mahadasha.endDate.format(dateFormatter)}",
                             fontSize = 11.sp,
                             color = ChartDetailColors.TextMuted
                         )
@@ -490,7 +490,7 @@ private fun MahadashaCard(
 
 @Composable
 private fun AntardashaRow(
-    antardasha: DashaCalculator.AntarDasha,
+    antardasha: DashaCalculator.Antardasha,
     mahadashaPlanet: Planet
 ) {
     val planetColor = ChartDetailColors.getPlanetColor(antardasha.planet)

@@ -50,16 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.astro.storm.data.model.VedicChart
-import com.astro.storm.ephemeris.Yoga
 import com.astro.storm.ephemeris.YogaCalculator
-import com.astro.storm.ephemeris.YogaCategory
 import com.astro.storm.ui.screen.chartdetail.ChartDetailColors
-import com.astro.storm.ui.screen.chartdetail.components.SectionCard
 import com.astro.storm.ui.screen.chartdetail.components.StatusBadge
 
 /**
@@ -71,7 +69,7 @@ fun YogasTabContent(chart: VedicChart) {
         YogaCalculator.calculateYogas(chart)
     }
 
-    var selectedCategory by remember { mutableStateOf<YogaCategory?>(null) }
+    var selectedCategory by remember { mutableStateOf<YogaCalculator.YogaCategory?>(null) }
 
     val filteredYogas = remember(yogaAnalysis, selectedCategory) {
         if (selectedCategory == null) {
@@ -92,7 +90,7 @@ fun YogasTabContent(chart: VedicChart) {
 
         item {
             YogaCategoryFilter(
-                categories = YogaCategory.entries,
+                categories = YogaCalculator.YogaCategory.entries,
                 selectedCategory = selectedCategory,
                 yogaCounts = yogaAnalysis.allYogas.groupingBy { it.category }.eachCount(),
                 onCategorySelected = { selectedCategory = it }
@@ -113,6 +111,10 @@ fun YogasTabContent(chart: VedicChart) {
 
 @Composable
 private fun YogaSummaryCard(analysis: YogaCalculator.YogaAnalysis) {
+    val positiveCount = analysis.allYogas.count { it.isAuspicious }
+    val negativeCount = analysis.allYogas.count { !it.isAuspicious }
+    val topYogas = analysis.allYogas.sortedByDescending { it.strengthPercentage }.take(3)
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -148,12 +150,12 @@ private fun YogaSummaryCard(analysis: YogaCalculator.YogaAnalysis) {
                     color = ChartDetailColors.AccentGold
                 )
                 StatusBadge(
-                    count = analysis.positiveYogas.size,
+                    count = positiveCount,
                     label = "Auspicious",
                     color = ChartDetailColors.SuccessColor
                 )
                 StatusBadge(
-                    count = analysis.negativeYogas.size,
+                    count = negativeCount,
                     label = "Challenging",
                     color = ChartDetailColors.WarningColor
                 )
@@ -163,12 +165,12 @@ private fun YogaSummaryCard(analysis: YogaCalculator.YogaAnalysis) {
 
             OverallStrengthBar(analysis.overallYogaStrength)
 
-            if (analysis.topYogas.isNotEmpty()) {
+            if (topYogas.isNotEmpty()) {
                 HorizontalDivider(
                     color = ChartDetailColors.DividerColor,
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
-                TopYogasSection(analysis.topYogas)
+                TopYogasSection(topYogas)
             }
         }
     }
@@ -215,7 +217,7 @@ private fun OverallStrengthBar(strength: Double) {
 }
 
 @Composable
-private fun TopYogasSection(topYogas: List<Yoga>) {
+private fun TopYogasSection(topYogas: List<YogaCalculator.Yoga>) {
     Column {
         Text(
             text = "Most Significant Yogas",
@@ -224,7 +226,7 @@ private fun TopYogasSection(topYogas: List<Yoga>) {
             color = ChartDetailColors.AccentGold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        topYogas.take(3).forEach { yoga ->
+        topYogas.forEach { yoga ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,10 +260,10 @@ private fun TopYogasSection(topYogas: List<Yoga>) {
 
 @Composable
 private fun YogaCategoryFilter(
-    categories: List<YogaCategory>,
-    selectedCategory: YogaCategory?,
-    yogaCounts: Map<YogaCategory, Int>,
-    onCategorySelected: (YogaCategory?) -> Unit
+    categories: List<YogaCalculator.YogaCategory>,
+    selectedCategory: YogaCalculator.YogaCategory?,
+    yogaCounts: Map<YogaCalculator.YogaCategory, Int>,
+    onCategorySelected: (YogaCalculator.YogaCategory?) -> Unit
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -292,7 +294,7 @@ private fun YogaCategoryFilter(
                 FilterChip(
                     selected = selectedCategory == category,
                     onClick = { onCategorySelected(category) },
-                    label = { Text("${category.displayName} ($count)", fontSize = 12.sp) },
+                    label = { Text("${getCategoryDisplayName(category)} ($count)", fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = getCategoryColor(category).copy(alpha = 0.2f),
                         selectedLabelColor = getCategoryColor(category),
@@ -313,7 +315,7 @@ private fun YogaCategoryFilter(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun YogaCard(yoga: Yoga) {
+private fun YogaCard(yoga: YogaCalculator.Yoga) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -366,7 +368,7 @@ private fun YogaCard(yoga: Yoga) {
                             color = ChartDetailColors.TextPrimary
                         )
                         Text(
-                            text = yoga.category.displayName,
+                            text = getCategoryDisplayName(yoga.category),
                             fontSize = 11.sp,
                             color = ChartDetailColors.TextMuted
                         )
@@ -532,7 +534,7 @@ private fun YogaStrengthBadge(strength: Double) {
 }
 
 @Composable
-private fun EmptyYogasMessage(category: YogaCategory?) {
+private fun EmptyYogasMessage(category: YogaCalculator.YogaCategory?) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -553,7 +555,7 @@ private fun EmptyYogasMessage(category: YogaCategory?) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = if (category != null) {
-                    "No ${category.displayName} yogas found"
+                    "No ${getCategoryDisplayName(category)} yogas found"
                 } else {
                     "No yogas detected"
                 },
@@ -565,13 +567,24 @@ private fun EmptyYogasMessage(category: YogaCategory?) {
     }
 }
 
-private fun getCategoryColor(category: YogaCategory) = when (category) {
-    YogaCategory.RAJA -> ChartDetailColors.AccentGold
-    YogaCategory.DHANA -> ChartDetailColors.SuccessColor
-    YogaCategory.MAHAPURUSHA -> ChartDetailColors.AccentPurple
-    YogaCategory.NABHASA -> ChartDetailColors.AccentTeal
-    YogaCategory.CHANDRA -> ChartDetailColors.AccentBlue
-    YogaCategory.SOLAR -> ChartDetailColors.AccentOrange
-    YogaCategory.NEGATIVE -> ChartDetailColors.ErrorColor
-    YogaCategory.SPECIAL -> ChartDetailColors.AccentRose
+private fun getCategoryDisplayName(category: YogaCalculator.YogaCategory): String = when (category) {
+    YogaCalculator.YogaCategory.RAJA_YOGA -> "Raja Yoga"
+    YogaCalculator.YogaCategory.DHANA_YOGA -> "Dhana Yoga"
+    YogaCalculator.YogaCategory.MAHAPURUSHA_YOGA -> "Mahapurusha Yoga"
+    YogaCalculator.YogaCategory.NABHASA_YOGA -> "Nabhasa Yoga"
+    YogaCalculator.YogaCategory.CHANDRA_YOGA -> "Chandra Yoga"
+    YogaCalculator.YogaCategory.SOLAR_YOGA -> "Solar Yoga"
+    YogaCalculator.YogaCategory.NEGATIVE_YOGA -> "Negative Yoga"
+    YogaCalculator.YogaCategory.SPECIAL_YOGA -> "Special Yoga"
+}
+
+private fun getCategoryColor(category: YogaCalculator.YogaCategory): Color = when (category) {
+    YogaCalculator.YogaCategory.RAJA_YOGA -> ChartDetailColors.AccentGold
+    YogaCalculator.YogaCategory.DHANA_YOGA -> ChartDetailColors.SuccessColor
+    YogaCalculator.YogaCategory.MAHAPURUSHA_YOGA -> ChartDetailColors.AccentPurple
+    YogaCalculator.YogaCategory.NABHASA_YOGA -> ChartDetailColors.AccentTeal
+    YogaCalculator.YogaCategory.CHANDRA_YOGA -> ChartDetailColors.AccentBlue
+    YogaCalculator.YogaCategory.SOLAR_YOGA -> ChartDetailColors.AccentOrange
+    YogaCalculator.YogaCategory.NEGATIVE_YOGA -> ChartDetailColors.ErrorColor
+    YogaCalculator.YogaCategory.SPECIAL_YOGA -> ChartDetailColors.AccentRose
 }

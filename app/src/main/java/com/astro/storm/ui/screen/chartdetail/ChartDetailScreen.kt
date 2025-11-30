@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.astro.storm.data.model.PlanetPosition
 import com.astro.storm.data.model.VedicChart
 import com.astro.storm.ephemeris.DivisionalChartData
@@ -58,7 +58,7 @@ import com.astro.storm.ui.screen.chartdetail.tabs.PanchangaTabContent
 import com.astro.storm.ui.screen.chartdetail.tabs.PlanetsTabContent
 import com.astro.storm.ui.screen.chartdetail.tabs.TransitsTabContent
 import com.astro.storm.ui.screen.chartdetail.tabs.YogasTabContent
-import com.astro.storm.viewmodel.ChartDetailViewModel
+import com.astro.storm.ui.viewmodel.ChartDetailViewModel
 
 /**
  * Main Chart Detail Screen displaying comprehensive Vedic chart analysis.
@@ -80,7 +80,7 @@ fun ChartDetailScreen(
     chartId: Long,
     onNavigateBack: () -> Unit,
     onEditChart: (Long) -> Unit,
-    viewModel: ChartDetailViewModel = hiltViewModel()
+    viewModel: ChartDetailViewModel = viewModel()
 ) {
     val chart by viewModel.chart.collectAsState()
     val context = LocalContext.current

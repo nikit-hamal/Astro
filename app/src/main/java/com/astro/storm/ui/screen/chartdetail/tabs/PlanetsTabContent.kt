@@ -110,9 +110,12 @@ fun PlanetsTabContent(
 
 @Composable
 private fun PlanetaryConditionsSummary(
-    conditions: RetrogradeCombustionCalculator.PlanetaryConditionsAnalysis
+    conditions: RetrogradeCombustionCalculator.PlanetaryConditionAnalysis
 ) {
-    val retrogradeCount = conditions.planetConditions.count { it.isRetrograde }
+    val retrogradeCount = conditions.planetConditions.count {
+        it.retrogradeStatus == RetrogradeCombustionCalculator.RetrogradeStatus.RETROGRADE ||
+        it.retrogradeStatus == RetrogradeCombustionCalculator.RetrogradeStatus.STATIONARY_RETROGRADE
+    }
     val combustCount = conditions.planetConditions.count {
         it.combustionStatus != RetrogradeCombustionCalculator.CombustionStatus.NOT_COMBUST
     }
@@ -299,7 +302,7 @@ private fun ShadbalaOverviewCard(
 private fun PlanetDetailCard(
     position: PlanetPosition,
     shadbala: ShadbalaCalculator.PlanetaryShadbala?,
-    conditions: RetrogradeCombustionCalculator.PlanetConditions?,
+    conditions: RetrogradeCombustionCalculator.PlanetCondition?,
     onClick: () -> Unit
 ) {
     val planetColor = ChartDetailColors.getPlanetColor(position.planet)

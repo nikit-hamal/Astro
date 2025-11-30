@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,15 +57,20 @@ import com.astro.storm.data.model.VedicChart
 import com.astro.storm.ephemeris.TransitAnalyzer
 import com.astro.storm.ui.screen.chartdetail.ChartDetailColors
 import com.astro.storm.ui.screen.chartdetail.ChartDetailUtils
-import java.time.format.DateTimeFormatter
 
 /**
  * Transits tab content displaying current planetary transits and their effects.
  */
 @Composable
 fun TransitsTabContent(chart: VedicChart) {
+    val context = LocalContext.current
     val transitAnalysis = remember(chart) {
-        TransitAnalyzer.analyzeCurrentTransits(chart)
+        val analyzer = TransitAnalyzer(context)
+        try {
+            analyzer.analyzeTransits(chart)
+        } finally {
+            analyzer.close()
+        }
     }
 
     LazyColumn(
@@ -80,13 +86,19 @@ fun TransitsTabContent(chart: VedicChart) {
             CurrentTransitsCard(transitAnalysis)
         }
 
-        items(transitAnalysis.planetTransits) { transit ->
-            TransitDetailCard(transit = transit)
+        item {
+            GocharaResultsCard(transitAnalysis)
         }
 
-        if (transitAnalysis.upcomingSignChanges.isNotEmpty()) {
+        if (transitAnalysis.transitAspects.isNotEmpty()) {
             item {
-                UpcomingTransitsCard(transitAnalysis.upcomingSignChanges)
+                TransitAspectsCard(transitAnalysis)
+            }
+        }
+
+        if (transitAnalysis.significantPeriods.isNotEmpty()) {
+            item {
+                SignificantPeriodsCard(transitAnalysis)
             }
         }
     }
@@ -94,8 +106,14 @@ fun TransitsTabContent(chart: VedicChart) {
 
 @Composable
 private fun TransitOverviewCard(analysis: TransitAnalyzer.TransitAnalysis) {
-    val favorableCount = analysis.planetTransits.count { it.overallEffect.isFavorable }
-    val unfavorableCount = analysis.planetTransits.count { !it.overallEffect.isFavorable }
+    val favorableCount = analysis.gocharaResults.count {
+        it.effect == TransitAnalyzer.TransitEffect.EXCELLENT ||
+        it.effect == TransitAnalyzer.TransitEffect.GOOD
+    }
+    val challengingCount = analysis.gocharaResults.count {
+        it.effect == TransitAnalyzer.TransitEffect.CHALLENGING ||
+        it.effect == TransitAnalyzer.TransitEffect.DIFFICULT
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -132,13 +150,13 @@ private fun TransitOverviewCard(analysis: TransitAnalyzer.TransitAnalysis) {
                     color = ChartDetailColors.SuccessColor
                 )
                 OverviewBadge(
-                    count = unfavorableCount,
+                    count = challengingCount,
                     label = "Challenging",
                     color = ChartDetailColors.WarningColor
                 )
                 OverviewBadge(
-                    count = analysis.upcomingSignChanges.size,
-                    label = "Upcoming",
+                    count = analysis.transitAspects.size,
+                    label = "Aspects",
                     color = ChartDetailColors.AccentBlue
                 )
             }
@@ -180,7 +198,7 @@ private fun OverviewBadge(count: Int, label: String, color: Color) {
 
 @Composable
 private fun OverallTransitAssessment(analysis: TransitAnalyzer.TransitAnalysis) {
-    val overallScore = analysis.overallTransitScore
+    val overallScore = analysis.overallAssessment.score
     val progress = (overallScore / 100.0).coerceIn(0.0, 1.0).toFloat()
     val scoreColor = when {
         overallScore >= 70 -> ChartDetailColors.SuccessColor
@@ -219,14 +237,10 @@ private fun OverallTransitAssessment(analysis: TransitAnalyzer.TransitAnalysis) 
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = when {
-                overallScore >= 70 -> "Highly favorable period for new initiatives"
-                overallScore >= 50 -> "Generally positive transit period"
-                overallScore >= 30 -> "Mixed results expected, exercise caution"
-                else -> "Challenging period, focus on consolidation"
-            },
+            text = analysis.overallAssessment.summary,
             fontSize = 12.sp,
-            color = ChartDetailColors.TextMuted
+            color = ChartDetailColors.TextMuted,
+            lineHeight = 18.sp
         )
     }
 }
@@ -247,91 +261,72 @@ private fun CurrentTransitsCard(analysis: TransitAnalyzer.TransitAnalysis) {
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            analysis.planetTransits.forEach { transit ->
-                CurrentTransitRow(transit = transit)
+            analysis.transitPositions.forEach { position ->
+                val planetColor = ChartDetailColors.getPlanetColor(position.planet)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(planetColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = position.planet.symbol,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = position.planet.displayName,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = ChartDetailColors.TextPrimary
+                            )
+                            Text(
+                                text = "${position.sign.displayName} ${ChartDetailUtils.formatDegreeInSign(position.longitude)}",
+                                fontSize = 11.sp,
+                                color = ChartDetailColors.TextMuted
+                            )
+                        }
+                    }
+
+                    if (position.isRetrograde) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = ChartDetailColors.WarningColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "R",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ChartDetailColors.WarningColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CurrentTransitRow(transit: TransitAnalyzer.PlanetTransit) {
-    val planetColor = ChartDetailColors.getPlanetColor(transit.planet)
-    val effectColor = if (transit.overallEffect.isFavorable) {
-        ChartDetailColors.SuccessColor
-    } else {
-        ChartDetailColors.WarningColor
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(planetColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = transit.planet.symbol,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = transit.planet.displayName,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = ChartDetailColors.TextPrimary
-                )
-                Text(
-                    text = "${transit.transitSign.displayName} (H${transit.natalHouse})",
-                    fontSize = 11.sp,
-                    color = ChartDetailColors.TextMuted
-                )
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (transit.overallEffect.isFavorable) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                contentDescription = null,
-                tint = effectColor,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = if (transit.overallEffect.isFavorable) "Favorable" else "Challenging",
-                fontSize = 11.sp,
-                color = effectColor
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TransitDetailCard(transit: TransitAnalyzer.PlanetTransit) {
+private fun GocharaResultsCard(analysis: TransitAnalyzer.TransitAnalysis) {
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         label = "rotation"
     )
-
-    val planetColor = ChartDetailColors.getPlanetColor(transit.planet)
-    val effectColor = if (transit.overallEffect.isFavorable) {
-        ChartDetailColors.SuccessColor
-    } else {
-        ChartDetailColors.WarningColor
-    }
 
     Surface(
         modifier = Modifier
@@ -351,55 +346,26 @@ private fun TransitDetailCard(transit: TransitAnalyzer.PlanetTransit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(planetColor, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = transit.planet.symbol,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "${transit.planet.displayName} Transit",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = ChartDetailColors.TextPrimary
-                        )
-                        Text(
-                            text = "Through ${transit.transitSign.displayName} • House ${transit.natalHouse}",
-                            fontSize = 12.sp,
-                            color = ChartDetailColors.TextSecondary
-                        )
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = effectColor.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = transit.overallEffect.strength.displayName,
-                            fontSize = 11.sp,
-                            color = effectColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
-                        Icons.Default.ExpandMore,
+                        Icons.Outlined.Info,
                         contentDescription = null,
-                        tint = ChartDetailColors.TextMuted,
-                        modifier = Modifier.rotate(rotation)
+                        tint = ChartDetailColors.AccentPurple,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Gochara Analysis (From Moon)",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ChartDetailColors.TextPrimary
                     )
                 }
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = ChartDetailColors.TextMuted,
+                    modifier = Modifier.rotate(rotation)
+                )
             }
 
             AnimatedVisibility(
@@ -408,122 +374,8 @@ private fun TransitDetailCard(transit: TransitAnalyzer.PlanetTransit) {
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
-                    HorizontalDivider(color = ChartDetailColors.DividerColor)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Current Position",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ChartDetailColors.TextSecondary
-                    )
-                    Text(
-                        text = ChartDetailUtils.formatDegree(transit.transitLongitude),
-                        fontSize = 13.sp,
-                        color = ChartDetailColors.AccentTeal,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    if (transit.isRetrograde) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = ChartDetailColors.WarningColor.copy(alpha = 0.15f),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Text(
-                                text = "Currently Retrograde",
-                                fontSize = 11.sp,
-                                color = ChartDetailColors.WarningColor,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Transit Effects",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ChartDetailColors.TextSecondary,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Text(
-                        text = transit.overallEffect.description,
-                        fontSize = 13.sp,
-                        color = ChartDetailColors.TextPrimary,
-                        lineHeight = 20.sp,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-
-                    if (transit.aspectsToNatal.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Aspects to Natal Planets",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = ChartDetailColors.TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            transit.aspectsToNatal.forEach { aspect ->
-                                AspectChip(
-                                    aspect = aspect.aspectType.displayName,
-                                    planet = aspect.natalPlanet.symbol,
-                                    isFavorable = aspect.isFavorable
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        color = ChartDetailColors.CardBackgroundElevated
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "SAV & BAV Analysis",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = ChartDetailColors.AccentGold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "SAV Score:",
-                                    fontSize = 12.sp,
-                                    color = ChartDetailColors.TextMuted
-                                )
-                                Text(
-                                    text = "${transit.savScore} bindus",
-                                    fontSize = 12.sp,
-                                    color = ChartDetailColors.getSavFavorableColor(transit.savScore >= 28)
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "BAV Score:",
-                                    fontSize = 12.sp,
-                                    color = ChartDetailColors.TextMuted
-                                )
-                                Text(
-                                    text = "${transit.bavScore} bindus",
-                                    fontSize = 12.sp,
-                                    color = ChartDetailColors.getBinduColor(transit.bavScore)
-                                )
-                            }
-                        }
+                    analysis.gocharaResults.forEach { result ->
+                        GocharaResultRow(result = result)
                     }
                 }
             }
@@ -532,38 +384,209 @@ private fun TransitDetailCard(transit: TransitAnalyzer.PlanetTransit) {
 }
 
 @Composable
-private fun AspectChip(
-    aspect: String,
-    planet: String,
-    isFavorable: Boolean
-) {
-    val color = if (isFavorable) ChartDetailColors.AccentTeal else ChartDetailColors.WarningColor
+private fun GocharaResultRow(result: TransitAnalyzer.GocharaResult) {
+    val planetColor = ChartDetailColors.getPlanetColor(result.planet)
+    val effectColor = when (result.effect) {
+        TransitAnalyzer.TransitEffect.EXCELLENT -> ChartDetailColors.SuccessColor
+        TransitAnalyzer.TransitEffect.GOOD -> ChartDetailColors.AccentTeal
+        TransitAnalyzer.TransitEffect.NEUTRAL -> ChartDetailColors.TextSecondary
+        TransitAnalyzer.TransitEffect.CHALLENGING -> ChartDetailColors.WarningColor
+        TransitAnalyzer.TransitEffect.DIFFICULT -> ChartDetailColors.ErrorColor
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(planetColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = result.planet.symbol,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = result.planet.displayName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = ChartDetailColors.TextPrimary
+                    )
+                    Text(
+                        text = " • House ${result.houseFromMoon}",
+                        fontSize = 11.sp,
+                        color = ChartDetailColors.TextMuted
+                    )
+                }
+                if (result.isVedhaAffected) {
+                    Text(
+                        text = "Vedha from ${result.vedhaSource?.displayName ?: "unknown"}",
+                        fontSize = 10.sp,
+                        color = ChartDetailColors.WarningColor
+                    )
+                }
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (result.effect == TransitAnalyzer.TransitEffect.EXCELLENT ||
+                    result.effect == TransitAnalyzer.TransitEffect.GOOD)
+                    Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = effectColor,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = result.effect.displayName,
+                fontSize = 10.sp,
+                color = effectColor
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TransitAspectsCard(analysis: TransitAnalyzer.TransitAnalysis) {
+    var expanded by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "rotation"
+    )
 
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = color.copy(alpha = 0.15f)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
+        shape = RoundedCornerShape(16.dp),
+        color = ChartDetailColors.CardBackground
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .animateContentSize()
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = ChartDetailColors.AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Transit Aspects to Natal",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ChartDetailColors.TextPrimary
+                    )
+                }
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = ChartDetailColors.TextMuted,
+                    modifier = Modifier.rotate(rotation)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    analysis.transitAspects.take(10).forEach { aspect ->
+                        TransitAspectRow(aspect = aspect)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransitAspectRow(aspect: TransitAnalyzer.TransitAspect) {
+    val transitPlanetColor = ChartDetailColors.getPlanetColor(aspect.transitingPlanet)
+    val natalPlanetColor = ChartDetailColors.getPlanetColor(aspect.natalPlanet)
+    val applyingText = if (aspect.isApplying) "Applying" else "Separating"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(transitPlanetColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = aspect.transitingPlanet.symbol,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
             Text(
-                text = aspect,
+                text = " ${aspect.aspectType} ",
+                fontSize = 11.sp,
+                color = ChartDetailColors.TextSecondary
+            )
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(natalPlanetColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = aspect.natalPlanet.symbol,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Orb: ${String.format("%.1f", aspect.orb)}°",
                 fontSize = 10.sp,
-                color = color
+                color = ChartDetailColors.TextMuted
             )
             Text(
-                text = " $planet",
+                text = applyingText,
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
+                color = if (aspect.isApplying) ChartDetailColors.AccentTeal else ChartDetailColors.TextMuted
             )
         }
     }
 }
 
 @Composable
-private fun UpcomingTransitsCard(upcomingChanges: List<TransitAnalyzer.UpcomingSignChange>) {
+private fun SignificantPeriodsCard(analysis: TransitAnalyzer.TransitAnalysis) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -582,66 +605,77 @@ private fun UpcomingTransitsCard(upcomingChanges: List<TransitAnalyzer.UpcomingS
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Upcoming Sign Changes",
+                    text = "Significant Periods",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ChartDetailColors.TextPrimary
                 )
             }
 
-            upcomingChanges.take(5).forEach { change ->
-                UpcomingChangeRow(change = change)
+            analysis.significantPeriods.forEach { period ->
+                SignificantPeriodRow(period = period)
             }
         }
     }
 }
 
 @Composable
-private fun UpcomingChangeRow(change: TransitAnalyzer.UpcomingSignChange) {
-    val planetColor = ChartDetailColors.getPlanetColor(change.planet)
-    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+private fun SignificantPeriodRow(period: TransitAnalyzer.SignificantPeriod) {
+    val intensityColor = when (period.intensity) {
+        5 -> ChartDetailColors.ErrorColor
+        4 -> ChartDetailColors.WarningColor
+        3 -> ChartDetailColors.AccentGold
+        else -> ChartDetailColors.AccentTeal
+    }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 6.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(planetColor, CircleShape),
-                contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = period.description,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = ChartDetailColors.TextPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = intensityColor.copy(alpha = 0.15f)
             ) {
                 Text(
-                    text = change.planet.symbol,
+                    text = "Intensity ${period.intensity}/5",
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = change.planet.displayName,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = ChartDetailColors.TextPrimary
-                )
-                Text(
-                    text = "${change.fromSign.abbreviation} → ${change.toSign.abbreviation}",
-                    fontSize = 11.sp,
-                    color = ChartDetailColors.TextMuted
+                    color = intensityColor,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )
             }
         }
 
-        Text(
-            text = change.date.format(dateFormatter),
-            fontSize = 11.sp,
-            color = ChartDetailColors.AccentTeal
-        )
+        Row(modifier = Modifier.padding(top = 2.dp)) {
+            period.planets.forEach { planet ->
+                val planetColor = ChartDetailColors.getPlanetColor(planet)
+                Box(
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(16.dp)
+                        .background(planetColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = planet.symbol,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
     }
 }
