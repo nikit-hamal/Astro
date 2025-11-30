@@ -73,7 +73,7 @@ object DashaCalculator {
     /**
      * Nakshatra span in degrees
      */
-    private const val NAKSHATRA_SPAN = 13.333333333
+    private const val NAKSHATRA_SPAN = 360.0 / 27.0
 
     /**
      * Mahadasha period

@@ -41,10 +41,10 @@ class PanchangaCalculator(context: Context) {
         private const val TITHI_SPAN = 12.0
 
         // Nakshatra span is 13.333... degrees (360/27 nakshatras)
-        private const val NAKSHATRA_SPAN = 13.333333333
+        private const val NAKSHATRA_SPAN = 360.0 / 27.0
 
         // Yoga span is 13.333... degrees
-        private const val YOGA_SPAN = 13.333333333
+        private const val YOGA_SPAN = 360.0 / 27.0
 
         // Karana span is 6 degrees (half of tithi)
         private const val KARANA_SPAN = 6.0
