@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.rememberNavController
-import com.astro.storm.ui.navigation.AstroStormNavigation
+import com.astro.storm.ui.screen.AppScreen
 import com.astro.storm.ui.theme.AstroStormTheme
-import com.astro.storm.ui.viewmodel.ChartViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,12 +21,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val navController = rememberNavController()
-                    val viewModel: ChartViewModel = viewModel()
-                    AstroStormNavigation(
-                        navController = navController,
-                        viewModel = viewModel
-                    )
+                    AppScreen()
                 }
             }
         }

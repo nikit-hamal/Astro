@@ -282,6 +282,12 @@ class ChartViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = ChartUiState.Initial
     }
 
+    fun setSelectedChart(chartId: Long) {
+        viewModelScope.launch {
+            repository.setSelectedChart(chartId)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         ephemerisEngine.close()

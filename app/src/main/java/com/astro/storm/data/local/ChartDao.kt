@@ -31,4 +31,16 @@ interface ChartDao {
 
     @Query("SELECT * FROM charts WHERE name LIKE '%' || :query || '%' OR location LIKE '%' || :query || '%'")
     fun searchCharts(query: String): Flow<List<ChartEntity>>
+
+    @Transaction
+    suspend fun setSelectedChart(chartId: Long) {
+        clearAllSelections()
+        setChartSelected(chartId)
+    }
+
+    @Query("UPDATE charts SET isSelected = 0")
+    suspend fun clearAllSelections()
+
+    @Query("UPDATE charts SET isSelected = 1 WHERE id = :chartId")
+    suspend fun setChartSelected(chartId: Long)
 }
