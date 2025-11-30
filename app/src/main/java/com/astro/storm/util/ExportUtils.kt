@@ -70,7 +70,7 @@ object ExportUtils {
      * Get plaintext representation of chart for clipboard/LLM
      */
     fun getChartPlaintext(chart: VedicChart): String {
-        return chart.toPlainText()
+        return ChartReportGenerator(chart).generatePlainTextReport()
     }
 
     /**
