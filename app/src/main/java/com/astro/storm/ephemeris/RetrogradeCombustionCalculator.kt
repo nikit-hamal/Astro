@@ -311,9 +311,8 @@ object RetrogradeCombustionCalculator {
 
                 // Planetary war occurs within 1 degree
                 if (distance <= 1.0) {
-                    // Determine winner (higher longitude in most traditions)
-                    // Some traditions use brightness - here we use longitude
-                    val winner = if (planet1.longitude > planet2.longitude) planet1.planet else planet2.planet
+                    // Determine winner based on brightness (Venus > Jupiter > Mercury > Mars > Saturn)
+                    val winner = getWarWinner(planet1.planet, planet2.planet)
                     val loser = if (winner == planet1.planet) planet2.planet else planet1.planet
 
                     wars.add(
@@ -339,6 +338,22 @@ object RetrogradeCombustionCalculator {
     private fun calculateAngularDistance(long1: Double, long2: Double): Double {
         val diff = abs(long1 - long2)
         return if (diff > 180.0) 360.0 - diff else diff
+    }
+
+    private fun getWarWinner(planet1: Planet, planet2: Planet): Planet {
+        // Winner is determined by natural brightness
+        val brightness = mapOf(
+            Planet.VENUS to 7,
+            Planet.JUPITER to 6,
+            Planet.MERCURY to 4,
+            Planet.MARS to 5,
+            Planet.SATURN to 3
+        )
+
+        val b1 = brightness[planet1] ?: 0
+        val b2 = brightness[planet2] ?: 0
+
+        return if (b1 >= b2) planet1 else planet2
     }
 
     /**

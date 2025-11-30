@@ -47,6 +47,10 @@ object AspectCalculator {
         SATURN_3RD("Saturn 3rd Aspect", 60.0, AspectNature.CHALLENGING, "♄3"),
         SATURN_10TH("Saturn 10th Aspect", 270.0, AspectNature.CHALLENGING, "♄10"),
 
+        // Rahu/Ketu special aspects
+        RAHU_KETU_5TH("Rahu/Ketu 5th Aspect", 120.0, AspectNature.SIGNIFICANT, "☊☋5"),
+        RAHU_KETU_9TH("Rahu/Ketu 9th Aspect", 240.0, AspectNature.SIGNIFICANT, "☊☋9"),
+
         // 7th house aspect (all planets)
         FULL_ASPECT("7th House Aspect", 180.0, AspectNature.SIGNIFICANT, "⦻");
 
@@ -336,8 +340,8 @@ object AspectCalculator {
             )
 
             Planet.RAHU, Planet.KETU -> listOf(
-                120.0 to AspectType.JUPITER_5TH,  // 5th house (like Jupiter)
-                240.0 to AspectType.JUPITER_9TH   // 9th house (like Jupiter)
+                120.0 to AspectType.RAHU_KETU_5TH,
+                240.0 to AspectType.RAHU_KETU_9TH
             )
 
             else -> emptyList()
